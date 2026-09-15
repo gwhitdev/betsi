@@ -62,6 +62,10 @@ jobs:
       - name: Restore local tools
         run: dotnet tool restore
 
+      - name: Restore
+        # dotnet-ef builds the project to read the model, which needs restored packages.
+        run: dotnet restore Betsi/Betsi.csproj
+
       - name: Check for un-migrated model changes
         # The first migration in this repository was hand-written and had already drifted
         # from the model. This makes that impossible to repeat, for the tenant schema and the
