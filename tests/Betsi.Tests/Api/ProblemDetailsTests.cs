@@ -23,6 +23,8 @@ public class ProblemDetailsTests
 
     private HttpClient Client => _factory.ClientFor(BetsiApiFactory.TenantA);
 
+    private HttpClient Administrator => _factory.ClientFor(BetsiApiFactory.TenantA, actorRole: "Site Administrator");
+
     private async Task<CommandResult> ARegisteredPatientAsync()
     {
         var response = await Client.PostAsJsonAsync("/api/v1/patients/register", new RegisterPatientCommand
@@ -205,7 +207,7 @@ public class ProblemDetailsTests
     [Fact]
     public async Task A_location_with_no_capacity_is_rejected_before_it_reaches_the_domain()
     {
-        var response = await Client.PostAsJsonAsync("/api/v1/locations",
+        var response = await Administrator.PostAsJsonAsync("/api/v1/locations",
             new CreateLocationCommand { Name = "Nowhere", Capacity = 0 }, Ct);
 
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
@@ -216,11 +218,11 @@ public class ProblemDetailsTests
     {
         var registered = await ARegisteredPatientAsync();
 
-        var location = await (await Client.PostAsJsonAsync("/api/v1/locations",
+        var location = await (await Administrator.PostAsJsonAsync("/api/v1/locations",
             new CreateLocationCommand { Name = $"Bay {Guid.NewGuid()}", Capacity = 4 }, Ct))
             .ReadCommandResultAsync(Ct);
 
-        var queue = await (await Client.PostAsJsonAsync("/api/v1/queues",
+        var queue = await (await Administrator.PostAsJsonAsync("/api/v1/queues",
             new CreateQueueCommand { LocationId = location.AggregateId, Name = $"Queue {Guid.NewGuid()}" }, Ct))
             .ReadCommandResultAsync(Ct);
 

@@ -73,6 +73,10 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
                 ["Tenancy:DatabaseServers:test"] = "Server=(test)",
                 ["Tenancy:MigrateTenantsOnStartup"] = "false",
                 ["ControlPlane:MigrateOnStartup"] = "false",
+                ["Authentication:Jwt:Issuer"] = TestTokens.Issuer,
+                ["Authentication:Jwt:Audience"] = TestTokens.Audience,
+                ["Authentication:Jwt:SigningKeys:0:KeyId"] = TestTokens.KeyId,
+                ["Authentication:Jwt:SigningKeys:0:PublicKeyPem"] = TestTokens.PublicKeyPem,
                 ["Licensing:TrustedKeys:0:KeyId"] = TestLicenses.KeyId,
                 ["Licensing:TrustedKeys:0:PublicKeyPem"] = TestLicenses.PublicKeyPem
             });
@@ -161,7 +165,7 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
             await connection.OpenAsync();
 
             var tenantContext = new TenantContext();
-            tenantContext.Resolve(tenantId, Guid.Empty, "System");
+            tenantContext.ResolveSystem(tenantId);
 
             var options = new DbContextOptionsBuilder<BetsiDbContext>()
                 .UseSqlite(connection)
@@ -195,17 +199,26 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
     public async Task<Betsi.Application.Escalations.WaitingTimeEvaluation> EvaluateWaitingTimesAsync(Guid tenantId, DateTime now)
     {
         await using var scope = Services.CreateAsyncScope();
-        scope.ServiceProvider.GetRequiredService<TenantContext>().Resolve(tenantId, Guid.Empty, "System");
+        scope.ServiceProvider.GetRequiredService<TenantContext>().ResolveSystem(tenantId);
 
         return await scope.ServiceProvider.GetRequiredService<Betsi.Application.Escalations.IWaitingTimeMonitor>()
             .EvaluateAsync(now, CancellationToken.None);
+    }
+
+    /// <summary>A client authenticating with a bearer token only — no development headers.</summary>
+    public HttpClient ClientWithToken(string token)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return client;
     }
 
     /// <summary>Reads a tenant's database directly, to assert what a request actually wrote.</summary>
     public BetsiDbContext DatabaseFor(Guid tenantId)
     {
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(tenantId, Guid.Empty, "System");
+        tenantContext.ResolveSystem(tenantId);
 
         var options = new DbContextOptionsBuilder<BetsiDbContext>()
             .UseSqlite(ConnectionFor(tenantId))

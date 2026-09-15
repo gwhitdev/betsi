@@ -22,6 +22,7 @@
 
   <ItemGroup Label="Web">
     <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
   <ItemGroup Label="Observability">

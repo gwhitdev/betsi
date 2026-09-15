@@ -83,7 +83,7 @@ public class TenantLifecycleApiTests
     [Fact]
     public async Task Without_a_licence_administration_is_refused_with_403()
     {
-        var client = _factory.ClientFor(BetsiApiFactory.UnlicensedTenant);
+        var client = _factory.ClientFor(BetsiApiFactory.UnlicensedTenant, actorRole: "Site Administrator");
 
         var response = await client.PostAsJsonAsync("/api/v1/locations",
             new CreateLocationCommand { Name = "Majors bay 4", Capacity = 1 }, Ct);
@@ -98,18 +98,19 @@ public class TenantLifecycleApiTests
     public async Task A_refused_licence_gated_command_is_audited()
     {
         var name = $"Resus {Guid.NewGuid():N}";
-        var client = _factory.ClientFor(BetsiApiFactory.UnlicensedTenant);
+        var client = _factory.ClientFor(BetsiApiFactory.UnlicensedTenant, actorRole: "Site Administrator");
 
         await client.PostAsJsonAsync("/api/v1/locations", new CreateLocationCommand { Name = name, Capacity = 2 }, Ct);
 
         await using var db = _factory.DatabaseFor(BetsiApiFactory.UnlicensedTenant);
-        db.AuditLogs.ShouldContain(a => a.Action == nameof(CreateLocationCommand) && a.Outcome == "Failure");
+        db.AuditLogs.ShouldContain(a => a.Action == nameof(CreateLocationCommand) && a.Outcome == "Failure" &&
+                                        a.ErrorMessage!.Contains("licence"));
     }
 
     [Fact]
     public async Task With_a_licence_administration_is_allowed()
     {
-        var client = _factory.ClientFor(BetsiApiFactory.TenantA);
+        var client = _factory.ClientFor(BetsiApiFactory.TenantA, actorRole: "Site Administrator");
 
         var response = await client.PostAsJsonAsync("/api/v1/locations",
             new CreateLocationCommand { Name = $"Majors bay {Guid.NewGuid():N}", Capacity = 1 }, Ct);

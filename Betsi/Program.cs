@@ -6,6 +6,7 @@ using Betsi.Infrastructure;
 using Betsi.ControlPlane;
 using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
+using Betsi.Security;
 using FluentValidation;
 using MediatR;
 using Microsoft.OpenApi;
@@ -51,8 +52,17 @@ try
         AddHeaderScheme(TenantResolutionMiddleware.ActorRoleHeaderName, "Actor role, e.g. Nurse.");
         AddHeaderScheme(TenantResolutionMiddleware.ActorHeaderName, "Optional actor ID (GUID).");
 
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "An access token from the configured OIDC provider. In Development the X-Betsi headers may be used instead."
+        });
+
         options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
         {
+            [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
             [new OpenApiSecuritySchemeReference(TenantResolutionMiddleware.TenantHeaderName, document)] = [],
             [new OpenApiSecuritySchemeReference(TenantResolutionMiddleware.ActorRoleHeaderName, document)] = [],
             [new OpenApiSecuritySchemeReference(TenantResolutionMiddleware.ActorHeaderName, document)] = []
@@ -80,6 +90,8 @@ try
         // runs last, immediately before the handler.
         cfg.AddOpenBehavior(typeof(LoggingBehaviour<,>));
         cfg.AddOpenBehavior(typeof(AuditBehaviour<,>));
+        // Authorisation inside auditing, so a refused command leaves an audit row.
+        cfg.AddOpenBehavior(typeof(AuthorizationBehaviour<,>));
         // Licence before validation: a refused command is audited, but its body is not
         // inspected for a tenant that may not use it.
         cfg.AddOpenBehavior(typeof(LicenseBehaviour<,>));
@@ -96,6 +108,8 @@ try
 
     var tenantResolution = new TenantResolutionOptions();
     builder.Configuration.GetSection("TenantResolution").Bind(tenantResolution);
+
+    builder.Services.AddBetsiAuthentication(builder.Configuration, builder.Environment, tenantResolution);
 
     // Header-supplied tenants let anyone who can reach the API name any tenant. That is a
     // development convenience only, so refuse to start with it enabled outside development
@@ -129,9 +143,11 @@ try
     }
 
     app.UseSerilogRequestLogging();
+    app.UseAuthentication();
     app.UseTenantResolution(tenantResolution);
+    app.UseAuthorization();
     app.MapControllers();
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health").AllowAnonymous();
 
     await app.Services.GetRequiredService<IPlatformStartup>().RunAsync(CancellationToken.None);
 

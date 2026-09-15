@@ -36,7 +36,7 @@ public sealed class TenantDatabaseHealthCheck : IHealthCheck
             await using var scope = _services.CreateAsyncScope();
 
             scope.ServiceProvider.GetRequiredService<TenantContext>()
-                .Resolve(tenant.TenantId, Guid.Empty, "System");
+                .ResolveSystem(tenant.TenantId);
 
             try
             {

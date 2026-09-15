@@ -2,6 +2,8 @@ namespace Betsi.API.Controllers;
 
 using Betsi.ControlPlane;
 using Betsi.Infrastructure.Tenancy;
+using Betsi.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>The calling tenant's licence status and enabled features (spec §4.1).</summary>
@@ -21,6 +23,7 @@ public sealed class LicenseController : ControllerBase
 
     /// <summary>Licence status for the tenant named on the request.</summary>
     [HttpGet]
+    [Authorize(Policy = Permissions.LicenseRead)]
     [ProducesResponseType<LicenseStatusResponse>(StatusCodes.Status200OK)]
     public ActionResult<LicenseStatusResponse> Get()
     {

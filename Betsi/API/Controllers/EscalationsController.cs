@@ -2,7 +2,9 @@ namespace Betsi.API.Controllers;
 
 using Betsi.Application.Commands;
 using Betsi.Application.Escalations;
+using Betsi.Security;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
 
@@ -31,6 +33,8 @@ public sealed class EscalationsController : ControllerBase
     /// </summary>
     /// <param name="historyDays">How many days of resolved and closed escalations to include (1–30, default 7).</param>
     [HttpGet("board")]
+    [Authorize(Policy = Permissions.EscalationsRead)]
+    [AuditRead("EscalationBoard")]
     [ProducesResponseType<EscalationBoard>(StatusCodes.Status200OK)]
     public Task<EscalationBoard> GetBoard([FromQuery] int historyDays = 7, CancellationToken cancellationToken = default) =>
         _queries.GetBoardAsync(historyDays, cancellationToken);
@@ -41,6 +45,8 @@ public sealed class EscalationsController : ControllerBase
     /// <param name="escalationId">The escalation.</param>
     /// <param name="format"><c>json</c> (default) or <c>csv</c> for export.</param>
     [HttpGet("{escalationId:guid}/audit")]
+    [Authorize(Policy = Permissions.EscalationsRead)]
+    [AuditRead("EscalationAuditTrail", "escalationId")]
     [Produces("application/json", "text/csv")]
     [ProducesResponseType<IReadOnlyList<AuditTrailEntry>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

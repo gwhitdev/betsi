@@ -2,6 +2,7 @@ namespace Betsi.Application.Commands;
 
 using Betsi.Domain.Aggregates;
 using Betsi.Licensing;
+using Betsi.Security;
 
 // Every command here is part of the escalation workflow, which licensing must never disable
 // (spec §5). That includes policy change control: an expired licence must not stop a site
@@ -11,6 +12,7 @@ using Betsi.Licensing;
 
 /// <summary>Hands an escalation to a different role, which must acknowledge it afresh.</summary>
 [AlwaysAvailable("Escalation workflow: a safety function licensing must never disable (spec §5).")]
+[RequiresPermission(Permissions.EscalationsRespond)]
 public class ReassignEscalationCommand : ICommand
 {
     public Guid EscalationId { get; set; }
@@ -20,6 +22,7 @@ public class ReassignEscalationCommand : ICommand
 
 /// <summary>Records the supervisory review of a missed acknowledgement and closes the exception.</summary>
 [AlwaysAvailable("Escalation workflow: a safety function licensing must never disable (spec §5).")]
+[RequiresPermission(Permissions.EscalationsRespond)]
 public class CloseFollowUpExceptionCommand : ICommand
 {
     public Guid FollowUpExceptionId { get; set; }
@@ -35,6 +38,7 @@ public class CloseFollowUpExceptionCommand : ICommand
 
 /// <summary>Raises the escalation for one policy tier a waiting patient has reached. Idempotent.</summary>
 [AlwaysAvailable("Automatic escalation: a safety function licensing must never disable (spec §5).")]
+[SystemOnly]
 public class RaisePolicyEscalationCommand : ICommand
 {
     public Guid PatientEpisodeId { get; set; }
@@ -44,6 +48,7 @@ public class RaisePolicyEscalationCommand : ICommand
 
 /// <summary>Raises the follow-up exception for an escalation that missed its deadline. Idempotent.</summary>
 [AlwaysAvailable("Missed-acknowledgement follow-up: a safety function licensing must never disable (spec §5).")]
+[SystemOnly]
 public class RaiseFollowUpExceptionCommand : ICommand
 {
     public Guid EscalationId { get; set; }
@@ -62,6 +67,7 @@ public sealed class WaitingTimeTierInput
 
 /// <summary>Proposes a new policy revision. Takes no effect until someone else approves it.</summary>
 [AlwaysAvailable("Escalation policy change control: sites must be able to correct thresholds regardless of licence (spec §5).")]
+[RequiresPermission(Permissions.PolicyPropose)]
 public class ProposeEscalationPolicyCommand : ICommand
 {
     public bool Enabled { get; set; } = true;
@@ -75,6 +81,7 @@ public class ProposeEscalationPolicyCommand : ICommand
 
 /// <summary>Proposes a new revision restoring an earlier approved one (rollback).</summary>
 [AlwaysAvailable("Escalation policy change control: sites must be able to correct thresholds regardless of licence (spec §5).")]
+[RequiresPermission(Permissions.PolicyPropose)]
 public class ProposeEscalationPolicyRestorationCommand : ICommand
 {
     public int Revision { get; set; }
@@ -82,6 +89,7 @@ public class ProposeEscalationPolicyRestorationCommand : ICommand
 }
 
 [AlwaysAvailable("Escalation policy change control: sites must be able to correct thresholds regardless of licence (spec §5).")]
+[RequiresPermission(Permissions.PolicyDecide)]
 public class ApproveEscalationPolicyCommand : ICommand
 {
     public Guid PolicyId { get; set; }
@@ -93,6 +101,7 @@ public class ApproveEscalationPolicyCommand : ICommand
 }
 
 [AlwaysAvailable("Escalation policy change control: sites must be able to correct thresholds regardless of licence (spec §5).")]
+[RequiresPermission(Permissions.PolicyDecide)]
 public class RejectEscalationPolicyCommand : ICommand
 {
     public Guid PolicyId { get; set; }
@@ -101,6 +110,7 @@ public class RejectEscalationPolicyCommand : ICommand
 }
 
 [AlwaysAvailable("Escalation policy change control: sites must be able to correct thresholds regardless of licence (spec §5).")]
+[RequiresPermission(Permissions.PolicyPropose)]
 public class WithdrawEscalationPolicyCommand : ICommand
 {
     public Guid PolicyId { get; set; }

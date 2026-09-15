@@ -1,6 +1,7 @@
 namespace Betsi.Application.Commands;
 
 using Betsi.Licensing;
+using Betsi.Security;
 using MediatR;
 
 /// <summary>
@@ -37,6 +38,7 @@ public sealed record CommandResult(Guid AggregateId, int Version);
 /// Command to register a new patient episode (patient arrival).
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsRegister)]
 public class RegisterPatientCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -50,6 +52,7 @@ public class RegisterPatientCommand : ICommand
 /// Command to begin patient triage.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsCare)]
 public class BeginPatientTriageCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -61,6 +64,7 @@ public class BeginPatientTriageCommand : ICommand
 /// Command to complete patient triage and move to awaiting treatment.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsCare)]
 public class CompletePatientTriageCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -72,6 +76,7 @@ public class CompletePatientTriageCommand : ICommand
 /// Command to move patient to treatment area.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsCare)]
 public class BeginPatientTreatmentCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -84,6 +89,7 @@ public class BeginPatientTreatmentCommand : ICommand
 /// Command to discharge a patient.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsDischarge)]
 public class DischargePatientCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -96,6 +102,7 @@ public class DischargePatientCommand : ICommand
 /// Command to cancel an episode, for example a patient who left without being seen.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.PatientsDischarge)]
 public class CancelPatientEpisodeCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -110,6 +117,7 @@ public class CancelPatientEpisodeCommand : ICommand
 /// Command to create a new location (bed/room).
 /// </summary>
 [RequiresLicense(LicenseFeatures.Core)]
+[RequiresPermission(Permissions.LocationsManage)]
 public class CreateLocationCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -125,6 +133,7 @@ public class CreateLocationCommand : ICommand
 /// Command to create a new queue for a location.
 /// </summary>
 [RequiresLicense(LicenseFeatures.Core)]
+[RequiresPermission(Permissions.LocationsManage)]
 public class CreateQueueCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -136,6 +145,7 @@ public class CreateQueueCommand : ICommand
 /// Command to enqueue a patient in a queue.
 /// </summary>
 [AlwaysAvailable("Patient care: refusing it could delay treatment.")]
+[RequiresPermission(Permissions.QueuesManage)]
 public class EnqueuePatientCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -150,6 +160,7 @@ public class EnqueuePatientCommand : ICommand
 /// Command to trigger an escalation for a waiting-time threshold.
 /// </summary>
 [AlwaysAvailable("Escalation workflow: a safety function licensing must never disable (spec §5).")]
+[RequiresPermission(Permissions.EscalationsRaise)]
 public class TriggerWaitingTimeEscalationCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -163,6 +174,7 @@ public class TriggerWaitingTimeEscalationCommand : ICommand
 /// Command to acknowledge an escalation.
 /// </summary>
 [AlwaysAvailable("Escalation workflow: a safety function licensing must never disable (spec §5).")]
+[RequiresPermission(Permissions.EscalationsRespond)]
 public class AcknowledgeEscalationCommand : ICommand
 {
     public Guid TenantId { get; set; }
@@ -174,6 +186,7 @@ public class AcknowledgeEscalationCommand : ICommand
 /// Command to resolve an escalation.
 /// </summary>
 [AlwaysAvailable("Escalation workflow: a safety function licensing must never disable (spec §5).")]
+[RequiresPermission(Permissions.EscalationsRespond)]
 public class ResolveEscalationCommand : ICommand
 {
     public Guid TenantId { get; set; }
