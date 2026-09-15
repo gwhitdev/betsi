@@ -27,9 +27,14 @@ public static class EscalationModule
 
     private static void AddIntegrations(IServiceCollection services, IConfiguration configuration)
     {
-        var webhooks = new Betsi.Integrations.WebhookOptions();
-        configuration.GetSection(Betsi.Integrations.WebhookOptions.SectionName).Bind(webhooks);
-        services.AddSingleton(webhooks);
+        // Bound when first resolved, so configuration added after registration (a test host, a
+        // secret store) is what takes effect.
+        services.AddSingleton(sp =>
+        {
+            var webhooks = new Betsi.Integrations.WebhookOptions();
+            sp.GetRequiredService<IConfiguration>().GetSection(Betsi.Integrations.WebhookOptions.SectionName).Bind(webhooks);
+            return webhooks;
+        });
 
         // Secrets are encrypted with Data Protection. Every instance must share the key ring, or an
         // instance cannot read a secret another created: configure DataProtection:KeysDirectory

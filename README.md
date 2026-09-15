@@ -36,8 +36,14 @@ curl -X POST http://localhost:5080/api/v1/patients/register \
   -d '{"firstName":"Gwen","lastName":"Jones","dateOfBirth":"1962-04-19"}'
 ```
 
-Header-supplied tenants are a development convenience and the application **refuses to start**
-with them enabled outside Development. Authentication proper arrives in Phase G.
+Header-supplied identity is a development convenience and the application **refuses to start**
+with it enabled outside Development. Everywhere else, requests carry an access token from the
+configured OIDC provider — see [`docs/runbooks/identity-and-integrations.md`](docs/runbooks/identity-and-integrations.md).
+What each role may do is in [`docs/API.md`](docs/API.md#permissions).
+
+The API contract is published at `/openapi/v1.json` and checked in at
+[`docs/openapi/v1.json`](docs/openapi/v1.json); a test fails if they differ. After an intended
+change: `BETSI_UPDATE_OPENAPI=1 dotnet test Betsi.slnx`, and commit the file.
 
 ## Escalation policy
 
@@ -83,6 +89,8 @@ two contexts, so pass `--context BetsiDbContext` or `--context ControlPlaneDbCon
 | `Betsi/ControlPlane` | Tenant registry, provisioning and migration, operator CLI. |
 | `Betsi/Licensing` | Licence format, offline validator, feature gates. Public keys only. |
 | `Betsi/API` | Controllers and the RFC 9457 problem-details handler. |
+| `Betsi/Security` | Authentication schemes, role matrix and permissions, read auditing. |
+| `Betsi/Integrations` | Webhooks, signatures, HL7 v2 and FHIR R4 inbound messages. |
 | `tests/Betsi.Tests` | Domain, infrastructure, control-plane, licensing and API tests. |
 | `tools/Betsi.LicenseTool` | Licence key generation and signing. Never deployed. |
 | `docs/runbooks` | Operator and site-administrator procedures. |

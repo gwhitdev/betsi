@@ -8,13 +8,19 @@ application, infrastructure and API layers, with one database per tenant.
 ```
 HTTP request
   │
-  ├─ TenantResolutionMiddleware ──── no tenant 400 · unknown 404 · suspended 403 · not ready 503
+  ├─ Authentication ──────────────── OIDC bearer · signed inbound message · Development headers
+  │
+  ├─ TenantResolutionMiddleware ──── tenant + acting role from verified claims only;
+  │                                  no tenant 400 · unknown 404 · suspended 403 · not ready 503
+  │
+  ├─ Authorization ───────────────── endpoint permission from the role matrix; denials audited
   │
   ├─ Controller ──────────────────── dispatches a command, returns the result
   │
   ├─ MediatR pipeline
   │    ├─ LoggingBehaviour ───────── request name, tenant, actor, duration
   │    ├─ AuditBehaviour ─────────── one AuditLogs row per command, success or failure
+  │    ├─ AuthorizationBehaviour ──── the command's own permission; system-only commands
   │    ├─ LicenseBehaviour ───────── refuses licence-gated commands in restricted mode
   │    └─ ValidationBehaviour ────── FluentValidation; throws on failure
   │
@@ -49,6 +55,68 @@ defence in depth: a write whose tenant does not match the resolved scope throws
 > model per `DbContextOptions`, so the first tenant resolved in the process had its id
 > compiled into the model for every tenant thereafter — a cross-tenant data leak. Under
 > database-per-tenant the filter is also redundant. `TenantIsolationTests` holds this line.
+
+## Authentication and authorisation
+
+**Identity comes only from verified credentials.** Three authentication schemes sit behind one
+policy scheme that picks by request: a `Bearer` token goes to JWT validation; the inbound
+integration path goes to signature verification; anything else goes to the Development header
+scheme if it is enabled, or JWT otherwise. A bad bearer token never falls back to headers. The
+tenant middleware reads tenant, subject and roles from the resulting principal; it never reads
+identity from a raw header.
+
+**Tokens.** Any OIDC provider: discovery via `Authority`, or static public keys. Asymmetric
+algorithms only. Claim names are configuration, not code, so Entra ID, NHS CIS2 or Keycloak need
+mapping, not changes. Non-GUID subjects are hashed with the issuer into a stable actor id.
+
+**Acting role.** Audit records and domain rules need one role per action, but NHS staff often
+hold several. A multi-role token must select one — CIS2-style — by claim or header, and it must be
+a role the token holds. `System` (background work) and `Integration` (signed inbound messages) are
+reserved: `TenantContext.ResolveSystem` is unreachable from a request, and the Integration role is
+granted only to a principal authenticated by the inbound signature scheme.
+
+**Two layers of permission.** Controllers declare the permission a read needs; the
+`AuthorizationBehaviour` enforces the permission every command declares. The second layer exists
+because commands arrive by three routes — resource endpoints, the command envelope and inbound
+integrations — and only a check at the application boundary covers all of them (spec §6). Tests
+fail if any endpoint or command lacks a permission. The role → permission matrix is in
+`Security/Permissions.cs` and is a governance artefact.
+
+**Auditing.** Every refused authorisation and every successful read of patient data writes an
+`AuditLogs` row (who, which role, what, when — never the data).
+
+## Integrations
+
+```
+Outbox ──▶ CompositeOutboxPublisher ──▶ log
+                                    └─▶ WebhookFanOutPublisher ──▶ WebhookDeliveries (same transaction)
+                                                                          │
+                                   WebhookDeliveryService (10s) ──▶ WebhookDeliverer ──▶ signed POST ─▶ subscriber
+                                                                          │  backoff · dead letter · SSRF-checked connect
+
+EPR ─▶ POST /integrations/inbound/{tenant}/{source}
+         InboundSignature scheme (HMAC, 5 min window) ─▶ Integration principal
+           InboundMessageProcessor: reserve message id ─▶ HL7 v2 / FHIR reader ─▶ intent
+             ─▶ Register / Discharge / Cancel commands through the normal pipeline
+             ─▶ Accepted, or Quarantined with the body for review
+```
+
+**Minimum data out.** Webhook payloads are built from an allowlist of fields per event type, not
+by serialising the domain event, so a field added to an event for internal reasons never leaks to
+subscribers. No names, dates of birth, NHS numbers or notes.
+
+**Exactly-once effects from at-least-once transport.** Outbound: one delivery row per
+(subscription, event), delivered at least once, subscribers dedupe on `Betsi-Event-Id`. Inbound:
+a message id is reserved in the database before anything acts on it, so resends and concurrent
+copies act once; a visit id maps to one episode.
+
+**Quarantine, don't discard** (spec §6). An inbound message that cannot be processed is stored
+with its error and acknowledged, so it is neither lost nor retried forever. Its body — patient
+data — is readable only with episodes.read, and reading it is audited.
+
+**Secrets** for webhooks and sources are generated server-side, shown once, and stored encrypted
+with ASP.NET Data Protection. Every instance must share the key ring
+(`DataProtection:KeysDirectory` or a key store) — Phase I provisions it properly.
 
 ## Control plane
 
@@ -220,6 +288,10 @@ production, because an exception message can contain patient data or a connectio
 | `ControlPlane/` | SQLite, fake migrator and clock | Registry resolution, lifecycle, idempotency, failure recovery, licence auditing |
 | `ControlPlane/SqlServerProvisioningTests` | SQL Server via Testcontainers | Real database creation, control-plane migration, rowversion, partial failure |
 | `Licensing/` | Nothing — pure objects | Signatures, tampering, expiry and grace, clock rollback, command classification |
+| `Api/SecurityTests` | The real app, tokens minted per run | Token validation, acting roles, reserved roles, permissions on every endpoint and command, audit of denials and reads |
+| `Api/QueryAndCommandApiTests` | The real app | Episode detail, waiting board paging and filters, command envelope idempotency |
+| `Api/IntegrationApiTests` | The real app, recording webhook receiver | Signed minimal webhook payloads, retry and dead letter, SSRF, HL7 and FHIR inbound, quarantine |
+| `Api/OpenApiDocumentTests` | The real app | The published contract matches `docs/openapi/v1.json` |
 
 A handful of mappings — filtered index predicates, `GETUTCDATE()` defaults, `nvarchar(max)` —
 are applied only when the provider is SQL Server. That is what lets the same model build
@@ -239,3 +311,6 @@ Testcontainers suite is what stops the two drifting.
 | ADR-007 | Separate control-plane database; operator CLI, no admin HTTP API | Registry stores server profiles, not credentials |
 | ADR-008 | Escalation policy in the tenant database, change-controlled, no default | Two-person approval, effective dates, restore-as-new-revision |
 | ADR-009 | Follow-up exception as its own aggregate, one per missed deadline | Own owner, lifecycle and closure authority; survives late acknowledgement |
+| ADR-010 | Provider-agnostic OIDC; permissions not roles; checks at endpoint and command | Claim names configurable; acting role required for multi-role tokens; System and Integration reserved |
+| ADR-011 | Webhooks and inbound messages HMAC-signed; payload allowlists; quarantine | No external broker or FHIR SDK; minimal readers for the arrival/discharge feed only |
+| ADR-012 | URL-path API versioning; checked-in OpenAPI contract | See API-VERSIONING.md |

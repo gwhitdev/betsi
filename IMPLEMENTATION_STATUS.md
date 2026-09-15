@@ -9,15 +9,17 @@
 ## Where we are
 
 Phases **A (executable foundation)**, **B (write path)**, **C (testing & CI)**,
-**D (multi-tenancy & licensing)** and **E (escalation engine)** are implemented on disk. All of it is on branch
-`feature/phases-a-to-e` in [PR #1](https://github.com/gwhitdev/betsi/pull/1), with CI green.
+**D (multi-tenancy & licensing)**, **E (escalation engine)** and **G (API, authentication,
+integration)** are implemented. A–E are on branch
+`feature/phases-a-to-e` in [PR #1](https://github.com/gwhitdev/betsi/pull/1), with CI green. G is
+committed on `feature/phase-g`, stacked on it, and not yet pushed.
 Phases D and E were done before Phase C was formally closed (coverage
 gate, branch protection and a first green CI run are still outstanding).
 
 | Check | Result (2026-09-14, local) |
 |---|---|
 | `dotnet build Betsi.slnx` | ✅ 0 warnings, 0 errors (warnings are errors via `Directory.Build.props`) |
-| `dotnet test Betsi.slnx` | ✅ 275 passed, 0 failed, 0 skipped — including both SQL Server Testcontainers suites |
+| `dotnet test Betsi.slnx` | ✅ 355 passed, 0 failed, 0 skipped — including both SQL Server Testcontainers suites |
 | Migrations applied to real SQL Server | ✅ Control plane and both dev tenants against SQL Server 2022 in Docker, and via Testcontainers |
 | `dotnet dotnet-ef migrations has-pending-model-changes` | ✅ No drift, both contexts (repo-local tool) |
 | Coverage gate (≥70% Domain + Application) | ❌ Coverage collector referenced, no gate in CI yet |
@@ -121,6 +123,40 @@ read from the tenant database lacked a UTC marker, which a browser would show an
   hazard log, as is the default follow-up owner (Operations Manager) for escalations raised
   without a policy.
 
+## Phase G — API, authentication, integration (MVP-060–070)
+
+| Item | Status | Notes |
+|---|---|---|
+| MVP-065 OIDC authentication | ✅ | JWT bearer from any OIDC provider (discovery or static keys), asymmetric algorithms only, configurable claim names, issuer-scoped actor ids. Tenant and acting role from verified claims only; tenant header must match; multi-role tokens select an acting role; System and Integration reserved. Refuses to start outside Development without it |
+| Role-based authorisation | ✅ | Default role matrix → permissions. Every endpoint (fallback: authenticated) and every command declares one, enforced by test; commands checked in the pipeline so envelope and integration routes cannot bypass it. Site Administrator sees no patient data. Denials and patient-data reads audited |
+| MVP-068 Error codes | ✅ | Stable `code` on every problem response, documented |
+| MVP-062 Queries | ✅ | `GET /episodes/{id}`; `GET /boards/waiting` with location, state, wait and age filters and keyset cursors (verified on SQL Server). No acuity filter: acuity is not yet modelled |
+| MVP-061 Command envelope | ✅ | `POST /commands`: command id, correlation id, expected version, idempotency key (reserve-then-run, bound to actor and request), same pipeline and permissions |
+| MVP-064 Outbound webhooks | ✅ | Registration with secrets shown once and encrypted at rest; outbox fan-out in the same transaction; HMAC-signed with timestamp; backoff, dead letter, retry; allowlisted payload fields with no patient identifiers; SSRF checked at connect time |
+| MVP-063 Inbound webhooks | ✅ | Per-source HMAC, ±5 minutes; message-id reservation for exactly-once effect; quarantine with review |
+| MVP-066 HL7 v2 / FHIR adapter | ✅ scoped | ADT A01/A04/A03/A11 and FHIR R4 Encounter arrival/finished/cancelled → register/discharge/cancel as the Integration role; visit → episode links; HL7 ACKs. **Observations (ORU / FHIR Observation) not mapped: there is no observation model until Phase F** |
+| MVP-060 / MVP-070 OpenAPI and versioning | ✅ | `/openapi/v1.json` in all environments, checked in and drift-tested; `docs/API-VERSIONING.md` covers URL versioning, compatibility rules, deprecation, event and schema versioning |
+| Verified live | ✅ | 2026-09-15 against Docker SQL Server: migration applied; OpenAPI anonymous; 401 without credentials; Nurse refused webhook admin; webhook registered to a local receiver; signed HL7 A01 → ACK AA and episode; resend handled once; forged signature 401; waiting board; envelope retry replayed; A03 → ACK AA; `patient.arrived` and `patient.discharged` delivered with valid signatures and no patient identifiers |
+
+**Not done from MVP-060–070, and why**
+
+| Criterion | State |
+|---|---|
+| MVP-067 generic REST polling adapter (P2) | Not built. HL7 and FHIR cover the EPR feed; build when a site has a system that can only be polled |
+| MVP-069 .NET client SDK (P2) | Not built. The checked-in OpenAPI document can generate one (NSwag, Kiota) when a consumer needs it |
+| "Spec reviewed and approved" (MVP-060) | Needs an integration partner and the clinical safety officer |
+| Penetration test of authentication | Not started — needs an external tester, alongside the cross-tenant test from Phase D |
+| Break-glass access, service-account scopes for addons (spec §6) | Not built |
+| Data Protection key ring | Local file directory option only; a managed key store is Phase I |
+| p95/p99 latency budgets (MVP-062) | Board paging is index-backed; not load-tested |
+
+**Needs a decision**
+
+- **The role matrix** (`Security/Permissions.cs`, summarised in `docs/API.md`) is an information
+  governance and clinical safety decision: which roles see patient data, and which may change
+  escalation policy. It needs sign-off with the DPIA and hazard log.
+- **Identity provider** for the pilot site (CIS2, Entra ID or other) and how the tenant claim is issued.
+
 ---
 
 ## To close Phase C
@@ -132,10 +168,9 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 | Phase | Scope | Gate |
 |---|---|---|
-| G | Authentication (none exists today), RBAC, webhooks, FHIR (MVP-060–070) | Next: makes the role checks in D and E real |
 | F | Paediatric & clinical safety features (MVP-030–045) | **Named clinical safety officer + DCB0129 hazard log** |
 | H | Read models & dashboards (MVP-080–095) | SignalR decision |
-| I | Deployment & operations (MVP-102–115) | Trails E/G |
+| I | Deployment & operations (MVP-102–115) | Next without clinical sign-off: secrets and key storage, CD, monitoring |
 
 ## Open decisions
 

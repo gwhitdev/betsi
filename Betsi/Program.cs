@@ -45,6 +45,18 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "Betsi Patient Flow API",
+            Version = "v1",
+            Description = "Patient flow and escalation for emergency departments. Errors are RFC 9457 problem details " +
+                          "with a stable 'code'. See docs/API.md and docs/API-VERSIONING.md."
+        });
+
+        var xml = Path.Combine(AppContext.BaseDirectory, "Betsi.Core.xml");
+        if (File.Exists(xml))
+            options.IncludeXmlComments(xml);
+
         // Without these, every "Try it out" call is rejected by the tenant middleware. They are
         // described as API keys so Swagger UI's Authorize dialog sends them on every request.
         AddHeaderScheme(TenantResolutionMiddleware.TenantHeaderName,
@@ -114,6 +126,16 @@ try
     // Header-supplied tenants let anyone who can reach the API name any tenant. That is a
     // development convenience only, so refuse to start with it enabled outside development
     // rather than relying on configuration review to catch it.
+    // Webhook SSRF and plain-HTTP allowances are for pointing webhooks at a local receiver while
+    // developing. Anywhere else they would let a webhook registration reach internal services.
+    if (!builder.Environment.IsDevelopment() &&
+        (builder.Configuration.GetValue<bool>("Webhooks:AllowPrivateNetworkTargets") ||
+         builder.Configuration.GetValue<bool>("Webhooks:AllowInsecureHttp")))
+    {
+        throw new InvalidOperationException(
+            "Webhooks:AllowPrivateNetworkTargets and Webhooks:AllowInsecureHttp are Development-only settings.");
+    }
+
     if (tenantResolution.AllowHeaderFallback && !builder.Environment.IsDevelopment())
     {
         throw new InvalidOperationException(
@@ -132,10 +154,13 @@ try
 
     app.UseExceptionHandler();
 
+    // The OpenAPI document is published in every environment (MVP-060): it describes the contract,
+    // not any data. The interactive UI is Development only.
+    app.UseSwagger(options => options.RouteTemplate = "openapi/{documentName}.json");
+
     if (app.Environment.IsDevelopment())
     {
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Betsi v1"));
     }
     else
     {
