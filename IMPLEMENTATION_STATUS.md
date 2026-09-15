@@ -9,8 +9,9 @@
 ## Where we are
 
 Phases **A (executable foundation)**, **B (write path)**, **C (testing & CI)**,
-**D (multi-tenancy & licensing)** and **E (escalation engine)** are implemented on disk. **None of it is committed yet**, and
-CI has therefore never run. Phases D and E were done before Phase C was formally closed (coverage
+**D (multi-tenancy & licensing)** and **E (escalation engine)** are implemented on disk. All of it is on branch
+`feature/phases-a-to-e` in [PR #1](https://github.com/gwhitdev/betsi/pull/1), with CI green.
+Phases D and E were done before Phase C was formally closed (coverage
 gate, branch protection and a first green CI run are still outstanding).
 
 | Check | Result (2026-09-14, local) |
@@ -53,7 +54,7 @@ gate, branch protection and a first green CI run are still outstanding).
 | C-1 Domain tests | ✅ | 68 tests, every aggregate's legal and illegal transitions |
 | C-2 Repository / infrastructure tests | ✅ | 40 tests on SQLite in memory, plus 3 SQL Server Testcontainers tests |
 | C-3 API integration tests | ✅ | 25 tests via `WebApplicationFactory`: patient journey, tenant isolation, problem details |
-| C-4 CI pipeline | 🔄 | `.github/workflows/ci.yml`: build, test, migration drift, vulnerable packages. **Missing: coverage gate, branch protection, first green run** |
+| C-4 CI pipeline | 🔄 | `.github/workflows/ci.yml`: build, test, migration drift, vulnerable packages — green on PR #1. **Missing: coverage gate, branch protection** |
 
 ## Phase D — Multi-tenancy & licensing (MVP-007, 008, 009)
 
@@ -124,9 +125,8 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ## To close Phase C
 
-1. Commit the Phase A–C work and push, so CI runs for the first time.
-2. Confirm the SQL Server Testcontainers suite is also green in CI (green locally).
-3. Add a coverage threshold to CI and turn on branch protection for `main`.
+1. Merge PR #1.
+2. Add a coverage threshold to CI and turn on branch protection for `main`.
 
 ## Next phases
 
