@@ -45,6 +45,13 @@ public abstract class AggregateRoot
     /// </summary>
     protected void RaiseDomainEvent(DomainEvent @event)
     {
+        // Version advances before the event is stamped so that every event carries the
+        // version it produced. (AggregateId, Version) therefore uniquely identifies an
+        // event and orders the log for replay. Version doubles as the EF concurrency
+        // token: EF compares the value loaded from the database in the UPDATE predicate,
+        // so incrementing here is what makes a concurrent write fail.
+        Version++;
+
         @event.AggregateId = Id;
         @event.AggregateType = GetType().Name;
         @event.TenantId = TenantId;
@@ -53,13 +60,6 @@ public abstract class AggregateRoot
         _uncommittedEvents.Add(@event);
     }
 
-    /// <summary>
-    /// Marks this aggregate as committed (used by the repository).
-    /// </summary>
-    public void MarkAsCommitted()
-    {
-        Version++;
-    }
 }
 
 /// <summary>

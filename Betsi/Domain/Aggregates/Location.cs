@@ -106,7 +106,7 @@ public class Location : AggregateRoot
     public void OccupySpace(Guid patientEpisodeId, Guid actorId, string actorRole)
     {
         if (CurrentOccupancy >= Capacity)
-            throw new InvalidOperationException($"Location {Name} is at capacity");
+            throw new DomainRuleViolationException($"Location {Name} is at capacity");
 
         CurrentOccupancy++;
         UpdateState();

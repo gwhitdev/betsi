@@ -88,7 +88,7 @@ public class Queue : AggregateRoot
     public void EnqueuePatient(Guid patientEpisodeId, Guid actorId, string actorRole)
     {
         if (_patients.Contains(patientEpisodeId))
-            throw new InvalidOperationException($"Patient {patientEpisodeId} is already in queue");
+            throw new DomainRuleViolationException($"Patient {patientEpisodeId} is already in queue");
 
         _patients.Add(patientEpisodeId);
 
@@ -108,7 +108,7 @@ public class Queue : AggregateRoot
     {
         var index = _patients.IndexOf(patientEpisodeId);
         if (index == -1)
-            throw new InvalidOperationException($"Patient {patientEpisodeId} not found in queue");
+            throw new DomainRuleViolationException($"Patient {patientEpisodeId} not found in queue");
 
         _patients.RemoveAt(index);
 
