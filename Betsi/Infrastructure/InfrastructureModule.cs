@@ -8,6 +8,7 @@ using Betsi.Licensing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 /// <summary>
@@ -56,7 +57,9 @@ public static class InfrastructureModule
         configuration.GetSection(OutboxOptions.SectionName).Bind(outboxOptions);
         services.AddSingleton(outboxOptions);
         services.AddScoped<IOutboxProcessor, OutboxProcessor>();
-        services.AddSingleton<IOutboxPublisher, LoggingOutboxPublisher>();
+        // The default publisher only logs; the integrations module replaces it with one that also
+        // fans events out to webhook subscribers.
+        services.TryAddScoped<IOutboxPublisher, LoggingOutboxPublisher>();
         services.AddHostedService<OutboxBackgroundService>();
 
         return services;

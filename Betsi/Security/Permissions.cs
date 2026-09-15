@@ -21,13 +21,14 @@ public static class Permissions
     public const string LicenseRead = "license.read";
     public const string WebhooksManage = "webhooks.manage";
     public const string IntegrationsManage = "integrations.manage";
+    public const string IntegrationIngest = "integration.ingest";
 
     public static readonly IReadOnlyList<string> All =
     [
         PatientsRegister, PatientsCare, PatientsDischarge, EpisodesRead, QueuesManage,
         EscalationsRaise, EscalationsRespond, EscalationsRead,
         PolicyRead, PolicyPropose, PolicyDecide,
-        LocationsManage, LicenseRead, WebhooksManage, IntegrationsManage
+        LocationsManage, LicenseRead, WebhooksManage, IntegrationsManage, IntegrationIngest
     ];
 }
 
@@ -107,7 +108,7 @@ public static class RoleMatrix
         Grant(["Site Administrator"], Permissions.WebhooksManage, Permissions.IntegrationsManage);
 
         // Integrations bring arrivals and discharges from the EPR. Nothing else.
-        Grant([IntegrationRole], Permissions.PatientsRegister, Permissions.PatientsDischarge);
+        Grant([IntegrationRole], Permissions.IntegrationIngest, Permissions.PatientsRegister, Permissions.PatientsDischarge);
 
         return matrix;
     }

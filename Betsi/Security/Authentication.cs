@@ -305,6 +305,14 @@ public sealed class ProblemAuthorizationResultHandler(ILogger<ProblemAuthorizati
     {
         if (authorizeResult.Challenged)
         {
+            if (InboundSignatureAuthenticationHandler.IsInboundPath(context.Request.Path))
+            {
+                await ProblemCodes.WriteAsync(context, ProblemCodes.Create(
+                    StatusCodes.Status401Unauthorized, ProblemCodes.InvalidSignature, "Message not authenticated",
+                    "The message signature could not be verified."));
+                return;
+            }
+
             context.Response.Headers.WWWAuthenticate = "Bearer";
             await ProblemCodes.WriteAsync(context, ProblemCodes.Create(
                 StatusCodes.Status401Unauthorized, ProblemCodes.Unauthenticated, "Authentication required",

@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -51,11 +52,18 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
     /// <summary>Licensed; used only by the query and command-envelope tests.</summary>
     public static readonly Guid QueryTenant = Guid.Parse("88888888-8888-8888-8888-888888888888");
 
+    /// <summary>Licensed; used only by the webhook and inbound integration tests.</summary>
+    public static readonly Guid IntegrationTenant = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
+    /// <summary>Stands in for every webhook subscriber's server.</summary>
+    public RecordingWebhookReceiver WebhookReceiver { get; } = new();
+
     private readonly Dictionary<Guid, SqliteConnection> _connections = new()
     {
         [EscalationTenant] = new SqliteConnection("DataSource=:memory:"),
         [PerformanceTenant] = new SqliteConnection("DataSource=:memory:"),
         [QueryTenant] = new SqliteConnection("DataSource=:memory:"),
+        [IntegrationTenant] = new SqliteConnection("DataSource=:memory:"),
         [TenantA] = new SqliteConnection("DataSource=:memory:"),
         [TenantB] = new SqliteConnection("DataSource=:memory:"),
         [UnlicensedTenant] = new SqliteConnection("DataSource=:memory:")
@@ -77,6 +85,8 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
                 ["Tenancy:DatabaseServers:test"] = "Server=(test)",
                 ["Tenancy:MigrateTenantsOnStartup"] = "false",
                 ["ControlPlane:MigrateOnStartup"] = "false",
+                ["Webhooks:AllowPrivateNetworkTargets"] = "false",
+                ["Webhooks:AllowInsecureHttp"] = "false",
                 ["Authentication:Jwt:Issuer"] = TestTokens.Issuer,
                 ["Authentication:Jwt:Audience"] = TestTokens.Audience,
                 ["Authentication:Jwt:SigningKeys:0:KeyId"] = TestTokens.KeyId,
@@ -109,6 +119,9 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
             });
 
             services.AddScoped<IOutboxProcessor, OutboxProcessor>();
+
+            services.AddHttpClient(Betsi.Integrations.WebhookDeliverer.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => WebhookReceiver);
 
             // EF accumulates option configurations per context, so the SQL Server one must be
             // removed or the SQLite replacement would configure two providers.
@@ -158,6 +171,7 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
                 Tenant(EscalationTenant, "Escalation", TenantState.Active, licensed: true),
                 Tenant(PerformanceTenant, "Performance", TenantState.Active, licensed: true),
                 Tenant(QueryTenant, "Query", TenantState.Active, licensed: true),
+                Tenant(IntegrationTenant, "Integration", TenantState.Active, licensed: true),
                 Tenant(SuspendedTenant, "Suspended", TenantState.Suspended, licensed: true),
                 Tenant(UnlicensedTenant, "Unlicensed", TenantState.Active, licensed: false),
                 Tenant(OutdatedSchemaTenant, "Outdated", TenantState.Active, licensed: true, schema: "20200101000000_Ancient"));
@@ -248,6 +262,26 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
         }
 
         base.Dispose(disposing);
+    }
+}
+
+/// <summary>Records webhook requests and answers with a status the test chooses.</summary>
+public sealed class RecordingWebhookReceiver : HttpMessageHandler
+{
+    private readonly List<(HttpRequestMessage Request, string Body)> _received = [];
+
+    public HttpStatusCode Respond { get; set; } = HttpStatusCode.OK;
+
+    public IReadOnlyList<(HttpRequestMessage Request, string Body)> Received
+    {
+        get { lock (_received) return _received.ToList(); }
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
+        lock (_received) _received.Add((request, body));
+        return new HttpResponseMessage(Respond);
     }
 }
 

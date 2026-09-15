@@ -94,6 +94,9 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             StatusCodes.Status500InternalServerError, ProblemCodes.TenantIsolation, "Tenant isolation violation",
             "The request was refused to protect tenant isolation."),
 
+        Betsi.Integrations.IntegrationRequestException invalid => ProblemCodes.Create(
+            StatusCodes.Status400BadRequest, ProblemCodes.BadRequest, "Invalid request", invalid.Message),
+
         BadHttpRequestException badRequest => ProblemCodes.Create(
             badRequest.StatusCode, ProblemCodes.BadRequest, "Bad request", badRequest.Message),
 
