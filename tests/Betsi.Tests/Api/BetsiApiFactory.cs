@@ -48,10 +48,14 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
     /// <summary>Licensed; used only by the escalation performance tests, so their volumes are known.</summary>
     public static readonly Guid PerformanceTenant = Guid.Parse("77777777-7777-7777-7777-777777777777");
 
+    /// <summary>Licensed; used only by the query and command-envelope tests.</summary>
+    public static readonly Guid QueryTenant = Guid.Parse("88888888-8888-8888-8888-888888888888");
+
     private readonly Dictionary<Guid, SqliteConnection> _connections = new()
     {
         [EscalationTenant] = new SqliteConnection("DataSource=:memory:"),
         [PerformanceTenant] = new SqliteConnection("DataSource=:memory:"),
+        [QueryTenant] = new SqliteConnection("DataSource=:memory:"),
         [TenantA] = new SqliteConnection("DataSource=:memory:"),
         [TenantB] = new SqliteConnection("DataSource=:memory:"),
         [UnlicensedTenant] = new SqliteConnection("DataSource=:memory:")
@@ -153,6 +157,7 @@ public sealed class BetsiApiFactory : WebApplicationFactory<Program>
                 Tenant(TenantB, "Tenant B", TenantState.Active, licensed: true),
                 Tenant(EscalationTenant, "Escalation", TenantState.Active, licensed: true),
                 Tenant(PerformanceTenant, "Performance", TenantState.Active, licensed: true),
+                Tenant(QueryTenant, "Query", TenantState.Active, licensed: true),
                 Tenant(SuspendedTenant, "Suspended", TenantState.Suspended, licensed: true),
                 Tenant(UnlicensedTenant, "Unlicensed", TenantState.Active, licensed: false),
                 Tenant(OutdatedSchemaTenant, "Outdated", TenantState.Active, licensed: true, schema: "20200101000000_Ancient"));

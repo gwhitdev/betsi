@@ -35,6 +35,14 @@ public class BetsiDbContext : DbContext
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
     public DbSet<AuditLogRecord> AuditLogs { get; set; } = null!;
 
+    // ============= Integration =============
+    public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; } = null!;
+    public DbSet<WebhookSubscription> WebhookSubscriptions { get; set; } = null!;
+    public DbSet<WebhookDelivery> WebhookDeliveries { get; set; } = null!;
+    public DbSet<InboundSource> InboundSources { get; set; } = null!;
+    public DbSet<InboundMessage> InboundMessages { get; set; } = null!;
+    public DbSet<ExternalEpisodeLink> ExternalEpisodeLinks { get; set; } = null!;
+
     /// <summary>
     /// Whether the configured provider is SQL Server.
     /// </summary>
@@ -71,6 +79,7 @@ public class BetsiDbContext : DbContext
         ConfigureDomainEventRecord(modelBuilder);
         ConfigureOutboxMessage(modelBuilder);
         ConfigureAuditLogRecord(modelBuilder);
+        ConfigureIntegration(modelBuilder);
 
         // Every timestamp is an instant in UTC and is read back marked as such (see
         // UtcDateTimeConverter). Date of birth is a calendar date, not an instant, and must
@@ -398,6 +407,84 @@ public class BetsiDbContext : DbContext
         builder.HasIndex(e => new { e.TenantId, e.CreatedAt });
 
         builder.ToTable("AuditLogs", "dbo");
+    }
+
+    private void ConfigureIntegration(ModelBuilder modelBuilder)
+    {
+        void Max<T>(Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<T> property)
+        {
+            if (IsSqlServer)
+                property.HasColumnType("nvarchar(max)");
+        }
+
+        var idempotency = modelBuilder.Entity<IdempotencyRecord>();
+        idempotency.ToTable("IdempotencyRecords", "dbo");
+        idempotency.HasKey(e => e.Id);
+        idempotency.Property(e => e.IdempotencyKey).IsRequired().HasMaxLength(100);
+        idempotency.Property(e => e.CommandType).IsRequired().HasMaxLength(100);
+        idempotency.Property(e => e.RequestHash).IsRequired().HasMaxLength(64);
+        idempotency.Property(e => e.Status).IsRequired().HasMaxLength(20);
+        idempotency.Property(e => e.CorrelationId).HasMaxLength(100);
+        Max(idempotency.Property(e => e.ResponseBody));
+        idempotency.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
+
+        var subscription = modelBuilder.Entity<WebhookSubscription>();
+        subscription.ToTable("WebhookSubscriptions", "dbo");
+        subscription.HasKey(e => e.Id);
+        subscription.Property(e => e.Id).ValueGeneratedNever();
+        subscription.Property(e => e.Url).IsRequired().HasMaxLength(2000);
+        subscription.Property(e => e.Description).HasMaxLength(200);
+        subscription.Property(e => e.ProtectedSecret).IsRequired().HasMaxLength(2000);
+        var eventTypes = subscription.Property(e => e.EventTypes).IsRequired().HasConversion(
+            v => JsonSerializer.Serialize(v, JsonOptions),
+            v => JsonSerializer.Deserialize<List<string>>(v, JsonOptions) ?? new List<string>(),
+            new ValueComparer<List<string>>(
+                (a, b) => a != null && b != null && a.SequenceEqual(b),
+                v => v.Aggregate(0, (hash, t) => HashCode.Combine(hash, t.GetHashCode())),
+                v => v.ToList()));
+        Max(eventTypes);
+        subscription.HasIndex(e => new { e.TenantId, e.Active });
+
+        var delivery = modelBuilder.Entity<WebhookDelivery>();
+        delivery.ToTable("WebhookDeliveries", "dbo");
+        delivery.HasKey(e => e.Id);
+        delivery.Property(e => e.Id).ValueGeneratedNever();
+        delivery.Property(e => e.EventType).IsRequired().HasMaxLength(100);
+        delivery.Property(e => e.Payload).IsRequired();
+        Max(delivery.Property(e => e.Payload));
+        delivery.Property(e => e.Status).IsRequired().HasMaxLength(20);
+        delivery.Property(e => e.LastError).HasMaxLength(500);
+        // One delivery per event per subscription, so a re-run of the outbox cannot send twice.
+        delivery.HasIndex(e => new { e.SubscriptionId, e.EventId }).IsUnique();
+        delivery.HasIndex(e => new { e.TenantId, e.Status, e.NextAttemptAt });
+
+        var source = modelBuilder.Entity<InboundSource>();
+        source.ToTable("InboundSources", "dbo");
+        source.HasKey(e => e.Id);
+        source.Property(e => e.Id).ValueGeneratedNever();
+        source.Property(e => e.Name).IsRequired().HasMaxLength(200);
+        source.Property(e => e.Format).IsRequired().HasMaxLength(20);
+        source.Property(e => e.ProtectedSecret).IsRequired().HasMaxLength(2000);
+        source.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+
+        var message = modelBuilder.Entity<InboundMessage>();
+        message.ToTable("InboundMessages", "dbo");
+        message.HasKey(e => e.Id);
+        message.Property(e => e.MessageId).IsRequired().HasMaxLength(200);
+        message.Property(e => e.RequestHash).IsRequired().HasMaxLength(64);
+        message.Property(e => e.Status).IsRequired().HasMaxLength(20);
+        message.Property(e => e.MessageType).HasMaxLength(50);
+        message.Property(e => e.Error).HasMaxLength(1000);
+        Max(message.Property(e => e.Body));
+        message.HasIndex(e => new { e.SourceId, e.MessageId }).IsUnique();
+        message.HasIndex(e => new { e.TenantId, e.SourceId, e.Status });
+
+        var link = modelBuilder.Entity<ExternalEpisodeLink>();
+        link.ToTable("ExternalEpisodeLinks", "dbo");
+        link.HasKey(e => e.Id);
+        link.Property(e => e.ExternalVisitId).IsRequired().HasMaxLength(100);
+        link.HasIndex(e => new { e.SourceId, e.ExternalVisitId }).IsUnique();
+        link.HasIndex(e => new { e.TenantId, e.EpisodeId });
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.General);

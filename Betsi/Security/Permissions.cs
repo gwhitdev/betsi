@@ -131,3 +131,10 @@ public sealed class PermissionDeniedException(string permission, string role)
     public string Permission { get; } = permission;
     public string Role { get; } = role;
 }
+
+/// <summary>
+/// Marks an endpoint whose authorisation is enforced per command by the MediatR pipeline,
+/// because which permission applies depends on the command in the body.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class DispatchesAuthorizedCommandsAttribute : Attribute;

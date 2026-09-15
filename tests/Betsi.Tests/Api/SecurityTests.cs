@@ -48,6 +48,7 @@ public class SecurityTests
         return body.RootElement.TryGetProperty("code", out var code) ? code.GetString() : null;
     }
 
+    [Collection(ApiCollection.Name)]
     public class Tokens(BetsiApiFixture fixture) : SecurityTests(fixture)
     {
         [Fact]
@@ -139,6 +140,7 @@ public class SecurityTests
             Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 
+    [Collection(ApiCollection.Name)]
     public class ActingRoles(BetsiApiFixture fixture) : SecurityTests(fixture)
     {
         [Fact]
@@ -195,6 +197,7 @@ public class SecurityTests
         }
     }
 
+    [Collection(ApiCollection.Name)]
     public class Permissions(BetsiApiFixture fixture) : SecurityTests(fixture)
     {
         [Fact]
@@ -295,6 +298,7 @@ public class SecurityTests
         {
             if (action.GetCustomAttributes<AuthorizeAttribute>().Any(a => a.Policy is not null) ||
                 action.GetCustomAttribute<AllowAnonymousAttribute>() is not null ||
+                action.GetCustomAttribute<DispatchesAuthorizedCommandsAttribute>() is not null ||
                 controller.GetCustomAttributes<AuthorizeAttribute>().Any(a => a.Policy is not null))
             {
                 return true;

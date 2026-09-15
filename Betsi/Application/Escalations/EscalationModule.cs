@@ -14,6 +14,8 @@ public static class EscalationModule
         services.AddScoped<IEscalationPolicyReader, EscalationPolicyReader>();
         services.AddScoped<IWaitingTimeMonitor, WaitingTimeMonitor>();
         services.AddScoped<EscalationQueries>();
+        services.AddScoped<Betsi.Application.Queries.EpisodeQueries>();
+        services.AddScoped<Betsi.Application.Commands.CommandEnvelopeDispatcher>();
         services.AddHostedService<WaitingTimeMonitorService>();
 
         return services;
