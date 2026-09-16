@@ -24,7 +24,7 @@
 | MVP-050–055 | Multi-Tenant SaaS & Governance | 6 | 🔄 Delivered except MVP-054 (multi-site regional config); MVP-052 covers escalation policy only |
 | MVP-060–070 | API, Integration, & Authentication | 11 | 🔄 Delivered except MVP-067 and MVP-069 (both P2, deferred); MVP-066 covers arrival/discharge, not observations |
 | MVP-080–095 | UI/UX – Waiting Board & Dashboards | 16 | ⏳ Not started (Phase H) — the read APIs are delivered |
-| MVP-100–115 | Testing, Deployment, & Operations | 16 | 🔄 MVP-100/101 delivered and MVP-105 partly (CI, not CD); deployment, monitoring, backup and security testing outstanding (Phase I) |
+| MVP-100–115 | Testing, Deployment, & Operations | 16 | 🔄 MVP-100/101 delivered earlier; MVP-105/108/109/113/114 delivered (Phase I); MVP-110 documented without a paging tool; MVP-102/103/104/111/112/115 outstanding, each needing a framework choice, a host or an external party |
 
 ---
 

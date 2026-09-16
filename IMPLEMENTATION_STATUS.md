@@ -9,23 +9,24 @@
 ## Where we are
 
 Phases **A (executable foundation)**, **B (write path)**, **C (testing & CI)**,
-**D (multi-tenancy & licensing)**, **E (escalation engine)** and **G (API, authentication,
-integration)** are implemented. A–E are in
-[PR #1](https://github.com/gwhitdev/betsi/pull/1) (`feature/phases-a-to-e`) and G is in
-[PR #2](https://github.com/gwhitdev/betsi/pull/2) (`feature/phase-g`, stacked on #1). Both have
-CI green; **neither is merged, so `main` still holds none of this work.**
-Phases D, E and G were done before Phase C was formally closed: a coverage gate and branch
-protection are still outstanding.
+**D (multi-tenancy & licensing)**, **E (escalation engine)**, **G (API, authentication,
+integration)** and **I (deployment & operations)** are implemented. A–E are in
+[PR #1](https://github.com/gwhitdev/betsi/pull/1) (`feature/phases-a-to-e`), G is in
+[PR #2](https://github.com/gwhitdev/betsi/pull/2) (`feature/phase-g`, stacked on #1), and I is on
+`feature/phase-i`, stacked on #2, with no PR opened yet. PRs #1 and #2 have CI green;
+**nothing is merged, so `main` still holds none of this work.**
+Phase I closed Phase C's coverage gate. Branch protection on `main` remains outstanding and is a
+repository setting rather than code.
 
 | Check | Result (2026-09-16) |
 |---|---|
 | `dotnet build Betsi.slnx` | ✅ 0 warnings, 0 errors (warnings are errors via `Directory.Build.props`) |
-| `dotnet test Betsi.slnx` | ✅ 355 passed, 0 failed, 0 skipped — including both SQL Server Testcontainers suites |
+| `dotnet test Betsi.slnx` | ✅ 382 passed, 0 failed, 0 skipped — including all three SQL Server Testcontainers suites |
 | Migrations applied to real SQL Server | ✅ Control plane and both dev tenants against SQL Server 2022 in Docker, and via Testcontainers |
 | `dotnet dotnet-ef migrations has-pending-model-changes` | ✅ No drift, both contexts (repo-local tool) |
-| CI on pull requests | ✅ Green on PR #1 and PR #2: build, tests, migration drift (both contexts), vulnerable packages |
-| Coverage gate (≥70% Domain + Application) | ❌ Coverage collector referenced, no gate in CI yet |
-| Branch protection on `main` | ❌ Not configured |
+| CI on pull requests | ✅ Green on PR #1 and PR #2: build, tests, migration drift (both contexts), vulnerable packages. Phase I adds the coverage gate; not yet run on a PR |
+| Coverage gate (≥70% Domain + Application) | ✅ Enforced in CI by `tools/coverage-gate.py`. Actual: Domain 98.1%, Application 89.3% |
+| Branch protection on `main` | ❌ Not configured — a repository setting, not code |
 
 ---
 
@@ -58,7 +59,7 @@ protection are still outstanding.
 | C-1 Domain tests | ✅ | 68 tests, every aggregate's legal and illegal transitions |
 | C-2 Repository / infrastructure tests | ✅ | SQLite in memory, plus the SQL Server Testcontainers suites for migrations, provisioning, indexes and board paging |
 | C-3 API integration tests | ✅ | `WebApplicationFactory`: patient journey, tenant isolation, problem details, escalation engine, security, queries, command envelope, integrations, OpenAPI contract |
-| C-4 CI pipeline | 🔄 | `.github/workflows/ci.yml`: build, test, migration drift (both contexts), vulnerable packages — green on PR #1 and PR #2, and now runs on every pull request including stacked ones. **Missing: coverage gate, branch protection** |
+| C-4 CI pipeline | ✅ | `.github/workflows/ci.yml`: build, test with coverage, the ≥70% Domain and Application gate, migration drift (both contexts), vulnerable packages. Runs on every pull request including stacked ones. **Branch protection on `main` is still off** — a repository setting, not code |
 
 ## Phase D — Multi-tenancy & licensing (MVP-007, 008, 009)
 
@@ -80,11 +81,12 @@ protection are still outstanding.
 
 | Criterion | State |
 |---|---|
-| Encrypted connections in the registry | Met by design: the registry holds no credentials. Secret-store integration for server profiles is Phase I |
+| Encrypted connections in the registry | Met by design: the registry holds no credentials. Server-profile connection strings come from a secret store since Phase I (`secret:` references) |
 | Audit logging for rejected tenant access attempts | Logged (structured logs), not written to an audit table |
 | Penetration test for cross-tenant exposure | Not started — needs an external tester |
-| Provisioning as Infrastructure as Code; backup automation; restore test | Phase I. Runbook documents the interim approach |
-| Tenant export and destruction | Not started |
+| Backup, restore and the restore drill | Delivered in Phase I (`tenants backup`/`restore`, `docs/runbooks/backup-and-restore.md`). The drill has never been run against a deployed environment |
+| Provisioning as Infrastructure as Code | Not started. Provisioning remains an audited operator command |
+| Tenant export and destruction | Delivered in Phase I (`tenants export`, `tenants destroy`) |
 
 **Needs a decision**
 
@@ -149,7 +151,7 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 | "Spec reviewed and approved" (MVP-060) | Needs an integration partner and the clinical safety officer |
 | Penetration test of authentication | Not started — needs an external tester, alongside the cross-tenant test from Phase D |
 | Break-glass access, service-account scopes for addons (spec §6) | Not built |
-| Data Protection key ring | Local file directory option only; a managed key store is Phase I |
+| Data Protection key ring | Delivered in Phase I: shared through the control-plane database, with optional certificate encryption at rest |
 | p95/p99 latency budgets (MVP-062) | Board paging is index-backed; not load-tested |
 
 **Needs a decision**
@@ -161,14 +163,53 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ---
 
+## Phase I — Deployment & operations (MVP-105, 108, 109, 110, 113, 114)
+
+| Item | Status | Notes |
+|---|---|---|
+| Coverage gate | ✅ | `tools/coverage-gate.py` reads the Cobertura report and fails below 70% on Domain and Application, de-duplicating the lines Cobertura repeats per method. Closes Phase C |
+| Secret store for credentials | ✅ | Any configuration value may be `secret:<name>` (a file in `Secrets:Directory`, default `/run/secrets`), `secret:file:<path>` or `secret:env:<NAME>`, resolved before options bind. An unresolvable reference stops start-up, naming the key and never the value |
+| Data Protection key ring | ✅ | Shared through the control-plane database by default (new `control.DataProtectionKeys` table and migration), so a second instance reads what the first wrote. `FileSystem` for a shared volume; `Ephemeral` refused outside Development. Optional certificate encryption at rest, warned about on every start when absent |
+| MVP-109 Observability | ✅ | OpenTelemetry traces (ASP.NET Core, HttpClient, a span per command) and metrics (runtime, ASP.NET Core, and six Betsi metrics incl. outbox event lag) over OTLP; compact JSON logs outside Development; a correlation id per request, echoed to the caller, honoured from the caller after length-capping and control-character checks |
+| Health probes | ✅ | `/health/live` (no database — a database outage must not restart every instance), `/health/ready` (every available tenant), `/health` unchanged. `Betsi.Core --health-probe` for the container's HEALTHCHECK, because the runtime image has no curl |
+| MVP-108 Backup and restore | ✅ | `tenants backup` (full and log, `RESTORE VERIFYONLY` at the time of taking, optional AES-256 with a server certificate) and `tenants restore` (relocates every file under the target name; refuses to restore over a database a live tenant may be serving; `--repoint` switches the tenant). Point-in-time replay is documented, not automated: the stop point is a decision about which minutes of record to discard |
+| Tenant export and destruction | ✅ | `tenants export` writes every table as JSON, audited by row count only. `tenants destroy` needs a suspended tenant and an exact name match, drops the database, and leaves a `Destroyed` tombstone — requests naming it get 404, and its database name can never be reissued |
+| MVP-105 Container image and CD | ✅ | One image that is both service and operator CLI, so a deployment migrates with the build it is about to run. `release.yml` builds and pushes to GHCR, deploys staging, and deploys production behind the environment's own approval rule. `tools/deploy.sh` migrates before switching and rolls back on a failed readiness check |
+| MVP-114 Runbooks | ✅ | `docs/runbooks/deployment.md`, `backup-and-restore.md`, `observability-and-incidents.md` |
+| MVP-113 DSPT evidence | ✅ Prepared | `docs/DSPT-EVIDENCE.md`: every theme mapped to evidence or to a named gap |
+| MVP-110 Alerting | 🔄 | Alert rules, thresholds and a response per alert are documented and each links to a runbook. No paging tool is deployed; a site supplies one |
+| Verified live | ✅ | 2026-09-16 against Docker SQL Server: `tenants list`, `backup` (written and verified, with the unencrypted warning), `restore` into a second database, `export` with row counts; `/health/live`, `/health/ready` and `/health` all Healthy; a correlation id generated, a caller-supplied one honoured, one containing a tab replaced, and the id present on a 401 problem response; `--health-probe` exits 0 against a running service and 1 against none; compact JSON logging outside Development; a `secret:file:` connection string resolved, and a missing one refused by name |
+
+**Not done from MVP-102–115, and why**
+
+| Criterion | State |
+|---|---|
+| MVP-102 BDD/Gherkin, MVP-103 Pact contract tests | Not built, both P1. The integration and webhook suites already assert the same behaviour end to end; a second framework would restate it |
+| MVP-106/107 as running environments | The pipeline exists and is skipped until `DEPLOY_ENABLED` is set on each GitHub environment. There are no hosts |
+| Backup encryption, key-ring encryption | Supported and off. Both need a certificate the deployment must create; the service warns about the key ring on every start |
+| Monthly restore drill | Defined in the runbook; never run against a deployed environment. The automated test proves the mechanism, not the recovery time |
+| MVP-111 load testing, MVP-112 penetration test | Not started. The p95/p99 budgets are stated and unmeasured; the penetration test needs an external tester |
+| MVP-115 training materials | Not started. Needs the UI (Phase H) to describe |
+| Branch protection on `main` | A repository setting; cannot be delivered by a pull request |
+
+**Needs a decision**
+
+- **Where backups are written, and who holds the encryption certificate.** The commands take a
+  path on the database server and an optional certificate name; which storage, which retention
+  and which key custody are a site's information-governance decisions.
+
 ## What to do next
 
-1. **Review and merge PR #1**, then retarget PR #2 to `main` and merge it. Nothing is on `main`.
-2. **Close Phase C**: a coverage threshold in CI, and branch protection on `main`.
+1. **Review and merge PR #1**, then retarget PR #2, then open and merge a PR for
+   `feature/phase-i`. Nothing is on `main`.
+2. **Turn on branch protection on `main`** — the last Phase C item. Require the four CI checks
+   and at least one review.
 3. **Name a clinical safety officer** and open the DCB0129 hazard log — the longest lead time of
    anything outstanding, and it blocks Phase F entirely.
-4. **Phase I** is the next phase that needs no clinical sign-off, and it owns the secret and key
-   storage this system needs before it holds real patient data.
+4. **Stand up staging and production hosts** and set `DEPLOY_ENABLED` on each GitHub
+   environment. The pipeline is written and deploys nowhere until then.
+5. **Create the two certificates** before real patient data arrives: backup encryption and the
+   Data Protection key ring.
 
 ## Next phases
 
@@ -176,7 +217,6 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 |---|---|---|
 | F | Paediatric & clinical safety features (MVP-030–045) | **Named clinical safety officer + DCB0129 hazard log** |
 | H | Waiting board and dashboards (MVP-080–095) | Real-time transport decision; read APIs already delivered |
-| I | Deployment & operations (MVP-102–115) | None. Carries Data Protection key ring, secret store, CD, monitoring, backup and restore |
 
 ## Open decisions
 

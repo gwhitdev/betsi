@@ -30,8 +30,16 @@ public static class OperatorCli
           tenants suspend   --id <guid> --reason <text>
           tenants resume    --id <guid> --reason <text>
           tenants migrate   [--id <guid>]
+          tenants backup    --id <guid> --directory <path on the database server> [--type full|log] [--certificate <name>]
+          tenants restore   --id <guid> --from <path on the database server> --database <db> [--replace] [--repoint]
+          tenants export    --id <guid> --file <path>
+          tenants destroy   --id <guid> --confirm <tenant name>
           license install   --id <guid> --file <path>
           license status    [--id <guid>]
+
+        backup, restore and destroy act on the database server, so paths are as that server
+        sees them. export writes patient data to the local filesystem. See
+        docs/runbooks/backup-and-restore.md.
 
         Every command accepts --operator <name> (default: the OS user), recorded in the audit log.
         """;
@@ -58,6 +66,7 @@ public static class OperatorCli
         }
 
         var operations = services.GetRequiredService<ITenantOperations>();
+        var data = services.GetRequiredService<ITenantDataOperations>();
         var registry = services.GetRequiredService<ITenantRegistry>();
         var actor = $"operator:{options.GetValueOrDefault("operator", Environment.UserName)}";
 
@@ -76,7 +85,9 @@ public static class OperatorCli
             switch (args[0], args[1])
             {
                 case ("tenants", "list"):
-                    await ListAsync(registry, output);
+                    // From the control plane, not the registry: a destroyed tenant is absent
+                    // from the registry by design, and an operator still needs to see it.
+                    await ListAsync(await operations.ListAsync(cancellationToken), registry, output);
                     return Success;
 
                 case ("tenants", "provision"):
@@ -124,6 +135,64 @@ public static class OperatorCli
                     return results.All(r => r.Succeeded) ? Success : Failure;
                 }
 
+                case ("tenants", "backup"):
+                {
+                    var kind = options.GetValueOrDefault("type", "full").ToLowerInvariant() switch
+                    {
+                        "full" => BackupKind.Full,
+                        "log" => BackupKind.Log,
+                        var other => throw new FormatException($"--type must be 'full' or 'log', not '{other}'.")
+                    };
+
+                    var result = await data.BackupAsync(
+                        ParseId(Require(options, "id")),
+                        new BackupRequest(Require(options, "directory"), kind, options.GetValueOrDefault("certificate")),
+                        actor, cancellationToken);
+
+                    await output.WriteLineAsync($"{result.Kind} backup of {result.DatabaseName} written to {result.Path} and verified.");
+                    if (options.GetValueOrDefault("certificate") is null)
+                        await output.WriteLineAsync("WARNING: the backup is not encrypted. DSPT requires encrypted backup storage.");
+                    return Success;
+                }
+
+                case ("tenants", "restore"):
+                {
+                    await data.RestoreAsync(
+                        new RestoreRequest(
+                            ParseId(Require(options, "id")),
+                            Require(options, "from"),
+                            Require(options, "database"),
+                            Replace: options.ContainsKey("replace"),
+                            Repoint: options.ContainsKey("repoint")),
+                        actor, cancellationToken);
+
+                    await output.WriteLineAsync(options.ContainsKey("repoint")
+                        ? "Restored, and the tenant now points at the restored database. Resume it when you are satisfied."
+                        : "Restored. The tenant still points at its original database; verify the restore, then repeat with --repoint.");
+                    return Success;
+                }
+
+                case ("tenants", "export"):
+                {
+                    var result = await data.ExportAsync(
+                        ParseId(Require(options, "id")), Require(options, "file"), actor, cancellationToken);
+
+                    await output.WriteLineAsync($"Exported to {result.Path}:");
+                    foreach (var (table, count) in result.RowCounts)
+                        await output.WriteLineAsync($"  {table,-22}{count}");
+                    await output.WriteLineAsync("This file contains patient data. Handle it as the clinical record.");
+                    return Success;
+                }
+
+                case ("tenants", "destroy"):
+                {
+                    await data.DestroyAsync(
+                        ParseId(Require(options, "id")), Require(options, "confirm"), actor, cancellationToken);
+
+                    await output.WriteLineAsync("Destroyed. The database is dropped; the registry keeps a tombstone record.");
+                    return Success;
+                }
+
                 case ("license", "install"):
                 {
                     var key = await File.ReadAllTextAsync(Require(options, "file"), cancellationToken);
@@ -158,16 +227,26 @@ public static class OperatorCli
         }
     }
 
-    private static async Task ListAsync(ITenantRegistry registry, TextWriter output)
+    private static async Task ListAsync(
+        IReadOnlyList<TenantRecord> records, ITenantRegistry registry, TextWriter output)
     {
-        if (registry.All.Count == 0)
+        if (records.Count == 0)
         {
             await output.WriteLineAsync("No tenants are registered.");
             return;
         }
 
-        foreach (var tenant in registry.All.OrderBy(t => t.Name))
+        foreach (var record in records.OrderBy(t => t.Name))
         {
+            if (!registry.TryGet(record.TenantId, out var tenant))
+            {
+                await output.WriteLineAsync(
+                    $"{record.TenantId}  {record.Name}\n" +
+                    $"    state {record.State} — {record.StateReason}\n" +
+                    $"    database {record.DatabaseServer}/{record.DatabaseName} (gone)");
+                continue;
+            }
+
             await output.WriteLineAsync(
                 $"{tenant.TenantId}  {tenant.Name}\n" +
                 $"    state {tenant.State}, {tenant.Availability}{(tenant.UnavailableReason is null ? "" : $" — {tenant.UnavailableReason}")}\n" +
@@ -194,12 +273,16 @@ public static class OperatorCli
     {
         var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        for (var i = 0; i < args.Length; i += 2)
+        for (var i = 0; i < args.Length; i++)
         {
-            if (!args[i].StartsWith("--", StringComparison.Ordinal) || i + 1 >= args.Length)
+            if (!args[i].StartsWith("--", StringComparison.Ordinal))
                 throw new FormatException($"Expected '--option value' but found '{args[i]}'.");
 
-            options[args[i][2..]] = args[i + 1];
+            // A switch with no value is a flag: '--replace' and '--repoint' say to do
+            // something, not what to do it with.
+            var isFlag = i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal);
+
+            options[args[i][2..]] = isFlag ? "true" : args[++i];
         }
 
         return options;

@@ -61,7 +61,7 @@ public class OutboxProcessorTests
         BetsiDbContext context,
         IOutboxPublisher publisher,
         OutboxOptions? options = null) =>
-        new(context, publisher, options ?? new OutboxOptions(), NullLogger<OutboxProcessor>.Instance);
+        new(context, publisher, options ?? new OutboxOptions(), TestMetrics.Instance, NullLogger<OutboxProcessor>.Instance);
 
     [Fact]
     public async Task Draining_an_empty_outbox_does_nothing()

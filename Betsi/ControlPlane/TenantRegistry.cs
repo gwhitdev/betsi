@@ -120,7 +120,13 @@ public sealed class TenantRegistry : ITenantRegistry
         var now = _time.GetUtcNow();
         var previous = _snapshot;
 
-        var descriptors = records.ToDictionary(r => r.TenantId, r => Describe(r, now));
+        // A destroyed tenant is left out of the snapshot entirely, so a request naming it is
+        // answered exactly as one naming a tenant that never existed: 404, not a 503 that
+        // invites the caller to try again later. The control-plane record still holds it, which
+        // is where `tenants list` reads from.
+        var descriptors = records
+            .Where(r => r.State != TenantState.Destroyed)
+            .ToDictionary(r => r.TenantId, r => Describe(r, now));
 
         _snapshot = new Snapshot(descriptors, now);
 
@@ -187,7 +193,12 @@ public sealed class TenantRegistry : ITenantRegistry
     {
         foreach (var record in records)
         {
-            var license = descriptors[record.TenantId].License;
+            // A destroyed tenant has no descriptor — it is deliberately absent from the
+            // snapshot — and no licence left to evaluate.
+            if (!descriptors.TryGetValue(record.TenantId, out var descriptor))
+                continue;
+
+            var license = descriptor.License;
             var status = license.Status.ToString();
 
             // Every evaluation is logged; only changes are audited. Auditing each refresh would

@@ -1,5 +1,6 @@
 namespace Betsi.Infrastructure.Outbox;
 
+using Betsi.Infrastructure.Observability;
 using Betsi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,17 +27,20 @@ public sealed class OutboxProcessor : IOutboxProcessor
     private readonly BetsiDbContext _context;
     private readonly IOutboxPublisher _publisher;
     private readonly OutboxOptions _options;
+    private readonly BetsiMetrics _metrics;
     private readonly ILogger<OutboxProcessor> _logger;
 
     public OutboxProcessor(
         BetsiDbContext context,
         IOutboxPublisher publisher,
         OutboxOptions options,
+        BetsiMetrics metrics,
         ILogger<OutboxProcessor> logger)
     {
         _context = context;
         _publisher = publisher;
         _options = options;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -66,6 +70,9 @@ public sealed class OutboxProcessor : IOutboxProcessor
                 message.ProcessedAt = DateTime.UtcNow;
                 message.ProcessedBy = Environment.MachineName;
                 published++;
+
+                _metrics.OutboxProcessed(tenantId, "published");
+                _metrics.OutboxLag(tenantId, message.ProcessedAt.Value - message.CreatedAt);
             }
             catch (Exception exception)
             {
@@ -80,6 +87,7 @@ public sealed class OutboxProcessor : IOutboxProcessor
                     message.ProcessedAt = DateTime.UtcNow;
                     message.ProcessedBy = "dead-letter";
                     deadLettered++;
+                    _metrics.OutboxProcessed(tenantId, "dead-lettered");
 
                     _logger.LogError(
                         exception,
@@ -91,6 +99,7 @@ public sealed class OutboxProcessor : IOutboxProcessor
                 else
                 {
                     failed++;
+                    _metrics.OutboxProcessed(tenantId, "failed");
 
                     _logger.LogWarning(
                         exception,

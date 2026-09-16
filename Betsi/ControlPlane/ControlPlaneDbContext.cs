@@ -12,7 +12,14 @@ public enum TenantState
     /// <summary>Deliberately taken out of service by an operator. Data is retained.</summary>
     Suspended = 3,
     /// <summary>Provisioning or migration failed. Re-running the operation resumes it.</summary>
-    Failed = 4
+    Failed = 4,
+
+    /// <summary>
+    /// The database has been dropped at the site's request. The registry record is kept as a
+    /// tombstone: it records that the tenant existed and what became of it, and stops the
+    /// database name being reissued to another tenant. Irreversible.
+    /// </summary>
+    Destroyed = 5
 }
 
 /// <summary>
@@ -90,6 +97,13 @@ public sealed class ControlPlaneDbContext : DbContext
     public DbSet<TenantRecord> Tenants => Set<TenantRecord>();
     public DbSet<ControlPlaneAuditRecord> AuditLog => Set<ControlPlaneAuditRecord>();
 
+    /// <summary>
+    /// The Data Protection key ring shared by every instance of this deployment. See
+    /// <see cref="Betsi.Infrastructure.DataProtection.ControlPlaneXmlRepository"/>.
+    /// </summary>
+    public DbSet<Betsi.Infrastructure.DataProtection.DataProtectionKeyRecord> DataProtectionKeys =>
+        Set<Betsi.Infrastructure.DataProtection.DataProtectionKeyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var isSqlServer = Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer";
@@ -130,6 +144,14 @@ public sealed class ControlPlaneDbContext : DbContext
         audit.Property(a => a.Outcome).IsRequired().HasMaxLength(50);
         audit.Property(a => a.Detail).HasMaxLength(2000);
         audit.HasIndex(a => new { a.TenantId, a.OccurredAt });
+
+        var keys = modelBuilder.Entity<Betsi.Infrastructure.DataProtection.DataProtectionKeyRecord>();
+        keys.ToTable("DataProtectionKeys");
+        keys.HasKey(k => k.Id);
+        keys.Property(k => k.FriendlyName).IsRequired().HasMaxLength(200);
+        // The key ring XML is a few hundred bytes today; unbounded so a future algorithm or an
+        // encrypted-at-rest key cannot silently truncate and lose every secret it protects.
+        keys.Property(k => k.Xml).IsRequired();
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

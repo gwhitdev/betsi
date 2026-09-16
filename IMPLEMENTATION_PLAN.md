@@ -9,9 +9,9 @@
 | A Foundation · B Write path · C Tests & CI | ✅ Delivered — [PR #1](https://github.com/gwhitdev/betsi/pull/1) (CI green, unmerged) |
 | D Multi-tenancy & licensing · E Escalation engine | ✅ Delivered — PR #1 |
 | G API, authentication, integration | ✅ Delivered — [PR #2](https://github.com/gwhitdev/betsi/pull/2), stacked on #1 (CI green) |
+| I Deployment & operations | ✅ Delivered — branch `feature/phase-i`, stacked on #2; PR not yet opened |
 | F Clinical safety features | ⛔ Not started — gated on a named clinical safety officer |
 | H UI & dashboards | ⏳ Not started — read APIs exist; needs a real-time transport decision |
-| I Deployment & operations | ⏳ Not started — next phase that needs no clinical sign-off |
 
 Phase sections below record what was delivered against what was planned. Estimates are the
 original ones, kept so future estimates can be calibrated against them.
@@ -196,7 +196,7 @@ repository already commits aggregate, events and outbox in one `SaveChangesAsync
 
 ---
 
-### Phase C — Testing and CI  ·  ~6 days  ·  🔄 all but the coverage gate  ·  MVP-100 pulled forward
+### Phase C — Testing and CI  ·  ~6 days  ·  ✅ delivered (coverage gate closed in Phase I)  ·  MVP-100 pulled forward
 
 Deliberately placed **before** feature work. The project has 3,149 lines of untested code and
 a status doc that mistook "compiles" for "works"; that failure mode does not self-correct.
@@ -217,9 +217,11 @@ a status doc that mistook "compiles" for "works"; that failure mode does not sel
 **Exit criteria**: green CI on every PR; ≥70% line coverage on Domain and Application;
 migration-drift and vulnerable-package checks enforced.
 
-**Met except the coverage gate and branch protection.** CI runs build (warnings as errors),
-tests, migration drift for both contexts, and the vulnerable-package check, green on both PRs.
-Outstanding: a coverage threshold in CI, and branch protection on `main`.
+**Met.** CI runs build (warnings as errors), tests with coverage, the ≥70% Domain and
+Application gate (`tools/coverage-gate.py`), migration drift for both contexts, and the
+vulnerable-package check. Actual coverage is Domain 98%, Application 89%.
+**Outstanding: branch protection on `main`**, which is a repository setting, not code — it
+cannot be delivered by a pull request and is listed under "what to do next".
 
 ---
 
@@ -233,7 +235,7 @@ phase delivers the operational half.
 database and stores server profiles rather than credentials; and operator actions are a CLI on
 the service binary, not an HTTP API, because there was no authentication until Phase G.
 Runbook: [`docs/runbooks/tenant-operations.md`](docs/runbooks/tenant-operations.md).
-**Not built**: backup, restore, tenant export and destruction (Phase I).
+Backup, restore, tenant export and destruction followed in Phase I.
 
 ### Phase E — Escalation engine  ·  ~6 days  ·  ✅ delivered  ·  MVP-020–025
 Configurable thresholds per site (4h/6h/8h); background evaluator generating escalations
@@ -274,12 +276,35 @@ triage scoreboard, discharge tracking, workspace editor, site configuration UI, 
 Welsh language. Real-time transport (SignalR versus polling) decision needed before start; the
 board APIs are live queries, so polling is viable for a pilot.
 
-### Phase I — Deployment & operations  ·  ~7 days  ·  ⏳ not started  ·  MVP-102–115
+### Phase I — Deployment & operations  ·  ~7 days  ·  ✅ delivered  ·  MVP-105, 108, 109, 110, 113, 114
 CD pipeline, staging/production environments, monitoring and alerting, backup/restore drill,
-DSPT evidence pack. Operator runbooks for tenants, escalation policy and integrations are
-written. Carries three items the earlier phases deliberately left: a shared Data Protection key
-ring (webhook and integration secrets), a secret store for database credentials, and tenant
-backup, export and destruction.
+DSPT evidence pack. Carries three items the earlier phases deliberately left: a shared Data
+Protection key ring (webhook and integration secrets), a secret store for database credentials,
+and tenant backup, export and destruction.
+
+**Delivered**, and it closed Phase C's coverage gate on the way. What shipped:
+
+- **Coverage gate** (`tools/coverage-gate.py`, wired into CI) — Phase C's last exit criterion.
+- **Secret references** — any configuration value may be `secret:<name>`, `secret:file:<path>`
+  or `secret:env:<NAME>`, resolved from the mounted store before options bind, failing closed.
+- **Shared Data Protection key ring** in the control-plane database, so a second instance can
+  read a secret the first wrote; optional certificate encryption at rest; ephemeral refused
+  outside Development.
+- **Observability** — OpenTelemetry traces and metrics over OTLP, JSON logs outside Development,
+  a correlation id per request, and `/health/live` and `/health/ready` beside `/health`.
+- **Backup, restore, export and destruction** (`tenants backup|restore|export|destroy`), proved
+  against SQL Server in `SqlServerTenantDataTests`.
+- **Container image and CD** — one image that is both the service and the operator CLI;
+  `release.yml` builds it, deploys to staging, and deploys to production behind an environment
+  approval; `tools/deploy.sh` migrates before switching and rolls back on a failed readiness check.
+- **Runbooks and evidence** — `docs/runbooks/deployment.md`,
+  `docs/runbooks/backup-and-restore.md`, `docs/runbooks/observability-and-incidents.md`,
+  `docs/DSPT-EVIDENCE.md`.
+
+**Not built**: MVP-102 (BDD/Gherkin) and MVP-103 (Pact contract tests) — both P1, and the
+existing integration suites cover the same ground; MVP-106/107 as *running environments* — the
+pipeline exists, the hosts do not; MVP-111 (load testing), MVP-112 (penetration test) and
+MVP-115 (training materials), each needing something outside this repository.
 
 ---
 
@@ -288,33 +313,37 @@ backup, export and destruction.
 ```
 A ──▶ B ──▶ C ──┬──▶ D ──▶ E ──┐
                 │              ├──▶ H
-                └──▶ G ────────┘
+                └──▶ G ──▶ I ──┘
                      F ──▶ H        (F gated on clinical governance)
-                     I trails E/G
 ```
 
-Delivered: A, B, C (bar the coverage gate), D, E, G — 46 of the estimated 58 engineer-days on
-the critical path, in six working sessions.
+Delivered: A, B, C, D, E, G, I — 53 of the estimated 58 engineer-days on the critical path, in
+seven working sessions.
 
-**Remaining to a pilot-ready MVP**: H (~15d) and I (~7d), plus F (~10d) once clinical
-governance allows. I and H are independent; F blocks nothing else but is required before a
-paediatric-capable pilot.
+**Remaining to a pilot-ready MVP**: H (~15d), plus F (~10d) once clinical governance allows.
+F blocks nothing else but is required before a paediatric-capable pilot.
 
 ---
 
 ## 4. Immediate next actions
 
 1. **Review and merge [PR #1](https://github.com/gwhitdev/betsi/pull/1), then retarget and merge
-   [PR #2](https://github.com/gwhitdev/betsi/pull/2).** Both are green; nothing is on `main` yet.
-2. **Close Phase C**: coverage threshold in CI, branch protection on `main`.
+   [PR #2](https://github.com/gwhitdev/betsi/pull/2), then open and merge a PR for
+   `feature/phase-i`.** Nothing is on `main` yet.
+2. **Turn on branch protection on `main`** — the last Phase C item, and a repository setting
+   rather than code. Require the CI checks (build and test, coverage gate, schema drift,
+   vulnerable packages) and at least one review.
 3. **Name a clinical safety officer** and start the DCB0129 hazard log. This has blocked Phase F
    since 2026-09-12 and has the longest lead time of anything outstanding. The hazard log also
    needs to record three decisions already made in code: which operations a licence may gate,
    the supervisory role list, and the role-to-permission matrix.
 4. **Choose the identity provider** for the pilot site and how it issues the tenant claim.
 5. **Decide the real-time transport** for Phase H (SignalR or polling).
-6. **Start Phase I** — it needs no clinical sign-off, and it owns the secret and key storage the
-   deployed system needs before it holds real patient data.
+6. **Stand up the staging and production hosts** and set `DEPLOY_ENABLED` on each GitHub
+   environment. The pipeline is written and skipped until then, so nothing deploys anywhere yet.
+7. **Configure the two certificates** before real patient data: backup encryption
+   (`tenants backup --certificate`) and the key ring (`DataProtection:CertificatePath`). The
+   service warns about the second on every start.
 
 ---
 

@@ -483,3 +483,10 @@ $RECYCLE.BIN/
 
 # Licence signing keys. Private keys must never be committed; public keys are safe to share.
 *.private.pem
+
+# Local secret files mounted by the docker compose `app` profile. Only the README is tracked.
+/secrets/*
+!/secrets/README.md
+
+# Coverage reports produced by `dotnet test -- --coverage`.
+/TestResults/

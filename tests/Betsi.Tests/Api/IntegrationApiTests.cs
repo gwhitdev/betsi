@@ -74,8 +74,12 @@ public class IntegrationApiTests
             var before = _factory.WebhookReceiver.Received.Count;
             await DrainOutboxAndDeliverAsync();
 
+            // Scoped to this subscription *and* this episode: a drain publishes every pending
+            // outbox message in the tenant, so another test's patient, registered before this
+            // one drained, is fanned out to this subscription too.
             var sent = _factory.WebhookReceiver.Received.Skip(before)
                 .Where(r => r.Request.RequestUri!.AbsolutePath.EndsWith(subscription.Url.Split('/').Last()))
+                .Where(r => r.Body.Contains(patient.AggregateId.ToString(), StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             sent.Select(r => r.Request.Headers.GetValues("Betsi-Event-Type").Single()).ShouldBe(["patient.arrived", "escalation.raised"], ignoreOrder: true);
