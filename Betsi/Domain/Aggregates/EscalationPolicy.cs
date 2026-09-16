@@ -19,10 +19,11 @@ public sealed record WaitingTimeTier(
 /// Who may approve safety configuration and close follow-up exceptions.
 /// </summary>
 /// <remarks>
-/// Spec §2: MVP enforces a default role matrix; site-specific role mappings are v1.1. Roles
-/// are taken from the authenticated principal, which until Phase G is an unauthenticated
-/// header in Development only — so this check records intent and catches mistakes, but is
-/// not yet a security control.
+/// Spec §2: MVP enforces a default role matrix; site-specific role mappings are v1.1. The
+/// acting role comes from the authenticated principal — an OIDC token, or the Development-only
+/// header scheme — so this is enforcement, not documentation. The permission model
+/// (<c>Security/Permissions.cs</c>) decides who may reach these operations at all; this decides
+/// who may take the decision once here.
 /// </remarks>
 public static class EscalationAuthority
 {

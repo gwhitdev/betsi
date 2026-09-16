@@ -1,6 +1,6 @@
 # Betsi Patient Flow — Implementation Status
 
-**Last updated**: 2026-09-14
+**Last updated**: 2026-09-16
 **Plan**: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 **Definition of done**: merged with tests passing in CI. "It compiles" is not a status.
 
@@ -10,18 +10,20 @@
 
 Phases **A (executable foundation)**, **B (write path)**, **C (testing & CI)**,
 **D (multi-tenancy & licensing)**, **E (escalation engine)** and **G (API, authentication,
-integration)** are implemented. A–E are on branch
-`feature/phases-a-to-e` in [PR #1](https://github.com/gwhitdev/betsi/pull/1), with CI green. G is
-committed on `feature/phase-g`, stacked on it, and not yet pushed.
-Phases D and E were done before Phase C was formally closed (coverage
-gate, branch protection and a first green CI run are still outstanding).
+integration)** are implemented. A–E are in
+[PR #1](https://github.com/gwhitdev/betsi/pull/1) (`feature/phases-a-to-e`) and G is in
+[PR #2](https://github.com/gwhitdev/betsi/pull/2) (`feature/phase-g`, stacked on #1). Both have
+CI green; **neither is merged, so `main` still holds none of this work.**
+Phases D, E and G were done before Phase C was formally closed: a coverage gate and branch
+protection are still outstanding.
 
-| Check | Result (2026-09-14, local) |
+| Check | Result (2026-09-16) |
 |---|---|
 | `dotnet build Betsi.slnx` | ✅ 0 warnings, 0 errors (warnings are errors via `Directory.Build.props`) |
 | `dotnet test Betsi.slnx` | ✅ 355 passed, 0 failed, 0 skipped — including both SQL Server Testcontainers suites |
 | Migrations applied to real SQL Server | ✅ Control plane and both dev tenants against SQL Server 2022 in Docker, and via Testcontainers |
 | `dotnet dotnet-ef migrations has-pending-model-changes` | ✅ No drift, both contexts (repo-local tool) |
+| CI on pull requests | ✅ Green on PR #1 and PR #2: build, tests, migration drift (both contexts), vulnerable packages |
 | Coverage gate (≥70% Domain + Application) | ❌ Coverage collector referenced, no gate in CI yet |
 | Branch protection on `main` | ❌ Not configured |
 
@@ -54,9 +56,9 @@ gate, branch protection and a first green CI run are still outstanding).
 | Item | Status | Notes |
 |---|---|---|
 | C-1 Domain tests | ✅ | 68 tests, every aggregate's legal and illegal transitions |
-| C-2 Repository / infrastructure tests | ✅ | 40 tests on SQLite in memory, plus 3 SQL Server Testcontainers tests |
-| C-3 API integration tests | ✅ | 25 tests via `WebApplicationFactory`: patient journey, tenant isolation, problem details |
-| C-4 CI pipeline | 🔄 | `.github/workflows/ci.yml`: build, test, migration drift, vulnerable packages — green on PR #1. **Missing: coverage gate, branch protection** |
+| C-2 Repository / infrastructure tests | ✅ | SQLite in memory, plus the SQL Server Testcontainers suites for migrations, provisioning, indexes and board paging |
+| C-3 API integration tests | ✅ | `WebApplicationFactory`: patient journey, tenant isolation, problem details, escalation engine, security, queries, command envelope, integrations, OpenAPI contract |
+| C-4 CI pipeline | 🔄 | `.github/workflows/ci.yml`: build, test, migration drift (both contexts), vulnerable packages — green on PR #1 and PR #2, and now runs on every pull request including stacked ones. **Missing: coverage gate, branch protection** |
 
 ## Phase D — Multi-tenancy & licensing (MVP-007, 008, 009)
 
@@ -159,23 +161,29 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ---
 
-## To close Phase C
+## What to do next
 
-1. Merge PR #1.
-2. Add a coverage threshold to CI and turn on branch protection for `main`.
+1. **Review and merge PR #1**, then retarget PR #2 to `main` and merge it. Nothing is on `main`.
+2. **Close Phase C**: a coverage threshold in CI, and branch protection on `main`.
+3. **Name a clinical safety officer** and open the DCB0129 hazard log — the longest lead time of
+   anything outstanding, and it blocks Phase F entirely.
+4. **Phase I** is the next phase that needs no clinical sign-off, and it owns the secret and key
+   storage this system needs before it holds real patient data.
 
 ## Next phases
 
 | Phase | Scope | Gate |
 |---|---|---|
 | F | Paediatric & clinical safety features (MVP-030–045) | **Named clinical safety officer + DCB0129 hazard log** |
-| H | Read models & dashboards (MVP-080–095) | SignalR decision |
-| I | Deployment & operations (MVP-102–115) | Next without clinical sign-off: secrets and key storage, CD, monitoring |
+| H | Waiting board and dashboards (MVP-080–095) | Real-time transport decision; read APIs already delivered |
+| I | Deployment & operations (MVP-102–115) | None. Carries Data Protection key ring, secret store, CD, monitoring, backup and restore |
 
 ## Open decisions
 
 | # | Decision | State |
 |---|---|---|
-| 1 | SQL Server vs PostgreSQL | SQL Server adopted in code; revisit hosting cost before Phase 1 |
-| 2 | Project split | Host project + `tests/Betsi.Tests` adopted |
-| 3 | Clinical safety officer | **Unassigned — blocks Phase F** |
+| 1 | SQL Server vs PostgreSQL | ✅ SQL Server adopted in code; revisit hosting cost before Phase 1 |
+| 2 | Project split | ✅ Host project, `tests/Betsi.Tests`, `tools/Betsi.LicenseTool` |
+| 3 | Clinical safety officer | ⛔ **Unassigned — blocks Phase F.** Also owns three decisions already made in code: licence gating classification, supervisory role list, role-to-permission matrix |
+| 4 | Identity provider for the pilot site | ⛔ Open — any OIDC provider works; a site needs one chosen and the tenant claim issued |
+| 5 | Real-time transport for dashboards | ⛔ Open — needed before Phase H; polling is viable because the board APIs are live queries |

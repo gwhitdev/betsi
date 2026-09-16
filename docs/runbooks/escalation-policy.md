@@ -8,8 +8,10 @@ escalation (MVP-020), and changing it afterwards.
 > deliberate: thresholds are a local clinical decision and there is no safe software default.
 > Missed-acknowledgement follow-up still applies to escalations raised by hand.
 
-All examples use Development headers. In a deployed environment the tenant, actor and role come
-from the signed-in user once Phase G lands; until then, header-based access is Development only.
+Examples use Development headers for brevity. In a deployed environment the tenant, actor and
+acting role come from the signed-in user's access token; header-based access is Development only.
+Proposing needs `policy.propose`, and approving, rejecting or withdrawing needs `policy.decide` —
+see [`../API.md`](../API.md#permissions).
 
 ---
 

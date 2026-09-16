@@ -10,7 +10,8 @@ acknowledged, and no auditable record of either.
 - **Delivery plan**: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 - **Current state**: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
 - **Architecture**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- **API**: [`docs/API.md`](docs/API.md)
+- **API**: [`docs/API.md`](docs/API.md) · [versioning](docs/API-VERSIONING.md) · [OpenAPI](docs/openapi/v1.json)
+- **Runbooks**: [tenant operations](docs/runbooks/tenant-operations.md) · [escalation policy](docs/runbooks/escalation-policy.md) · [identity and integrations](docs/runbooks/identity-and-integrations.md)
 
 ## Running it
 
@@ -95,7 +96,7 @@ two contexts, so pass `--context BetsiDbContext` or `--context ControlPlaneDbCon
 | `tools/Betsi.LicenseTool` | Licence key generation and signing. Never deployed. |
 | `docs/runbooks` | Operator and site-administrator procedures. |
 | `design/` | Specification and inspection-report traceability. |
-| `docs/` | Architecture and API reference. |
+| `docs/` | Architecture, API reference, versioning policy and the published OpenAPI document. |
 
 ## Conventions
 

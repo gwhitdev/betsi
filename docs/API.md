@@ -176,8 +176,8 @@ supervisory role closes it with an outcome: `AcknowledgedLate`, `Reassigned`,
 up the same way, even with no policy in force.
 
 Supervisory roles, for approving policy and closing any follow-up exception, are `Clinical
-Lead`, `Operations Manager`, `Site Manager` and `Matron`. Until Phase G roles come from an
-unauthenticated header, so this is a safeguard against mistakes, not a security control.
+Lead`, `Operations Manager`, `Site Manager` and `Matron`. The acting role comes from the
+authenticated credentials (see *Authentication*), so these checks are enforced, not advisory.
 
 Raising an escalation requires a `responsibleRole`; an escalation nobody owns is the failure
 mode the inspection report describes. Raising one for a patient who does not exist is a 404.
@@ -200,8 +200,8 @@ Read live from the tenant database, so staleness is however often the client pol
 | `history` | Resolved and closed escalations within `historyDays` (1–30). |
 | `truncated` | True if any list hit 500 items. |
 
-Every card includes a patient summary (name, state, arrival, minutes since arrival). **This is
-patient data on an unauthenticated read endpoint until Phase G.**
+Every card includes a patient summary (name, state, arrival, minutes since arrival). Reading the
+board requires `escalations.read` and is recorded in the audit log.
 
 ### Audit trail
 

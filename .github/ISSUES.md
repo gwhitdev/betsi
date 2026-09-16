@@ -1,23 +1,30 @@
 # GitHub Issues – Betsi Patient Flow MVP
 
 **Total Issues**: 115  
+**Last Updated**: 2026-09-16  
 **Phases**: MVP Phase 0  
 **Label Categories**: Priority (P0/P1/P2/P3), Type (Feature/Bug/Tech-Debt/Documentation), Component (Core/API/UI/Integration/Testing/Ops)
+
+> This file holds the acceptance criteria for each issue; they have not been edited as work
+> landed. **What is actually built, and what was verified when, is in
+> [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md)**; per-issue progress is ticked in
+> [project.md](project.md). Where an issue's criteria were met differently from how they are
+> written here, the status document says so — the criteria are not retrofitted.
 
 ---
 
 ## Quick Reference: Issue Categories
 
-| Issue Range | Theme | Count | Status |
+| Issue Range | Theme | Count | Status (2026-09-16) |
 |---|---|---|---|
-| MVP-001–010 | Core Patient Flow Engine | 10 | Proposed |
-| MVP-020–025 | Waiting-Time Escalation & Visibility | 6 | Proposed |
-| MVP-030–035 | Paediatric Safety & Safeguarding | 6 | Proposed |
-| MVP-040–045 | Clinical Observation & Deterioration | 6 | Proposed |
-| MVP-050–055 | Multi-Tenant SaaS & Governance | 6 | Proposed |
-| MVP-060–070 | API, Integration, & Authentication | 11 | Proposed |
-| MVP-080–095 | UI/UX – Waiting Board & Dashboards | 16 | Proposed |
-| MVP-100–115 | Testing, Deployment, & Operations | 16 | Proposed |
+| MVP-001–010 | Core Patient Flow Engine | 10 | ✅ Delivered (Phases A, B, D) |
+| MVP-020–025 | Waiting-Time Escalation & Visibility | 6 | ✅ Delivered as APIs (Phase E); dashboards in MVP-080–095 |
+| MVP-030–035 | Paediatric Safety & Safeguarding | 6 | ⛔ Not started — blocked on clinical safety officer and DCB0129 hazard log |
+| MVP-040–045 | Clinical Observation & Deterioration | 6 | ⛔ Not started — same clinical governance gate |
+| MVP-050–055 | Multi-Tenant SaaS & Governance | 6 | 🔄 Delivered except MVP-054 (multi-site regional config); MVP-052 covers escalation policy only |
+| MVP-060–070 | API, Integration, & Authentication | 11 | 🔄 Delivered except MVP-067 and MVP-069 (both P2, deferred); MVP-066 covers arrival/discharge, not observations |
+| MVP-080–095 | UI/UX – Waiting Board & Dashboards | 16 | ⏳ Not started (Phase H) — the read APIs are delivered |
+| MVP-100–115 | Testing, Deployment, & Operations | 16 | 🔄 MVP-100/101 delivered and MVP-105 partly (CI, not CD); deployment, monitoring, backup and security testing outstanding (Phase I) |
 
 ---
 

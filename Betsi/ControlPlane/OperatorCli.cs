@@ -8,9 +8,11 @@ using Microsoft.EntityFrameworkCore;
 /// exactly the configuration the service does.
 /// </summary>
 /// <remarks>
-/// A command line rather than an HTTP API: the API has no authentication until Phase G, and an
-/// unauthenticated endpoint that can create or suspend hospitals is not acceptable. Access to
-/// these commands is access to the host, which is already a privileged boundary.
+/// A command line rather than an HTTP API. Provisioning and suspending tenants is control-plane
+/// work, not tenant work: it crosses tenants, so it does not fit the per-tenant authorisation
+/// model, and access to these commands is access to the host, which is already a privileged
+/// boundary. An authenticated admin API would need its own identity and audit story; if one is
+/// ever added, it belongs behind the control plane, not the tenant API.
 /// </remarks>
 public static class OperatorCli
 {

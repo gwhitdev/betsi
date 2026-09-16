@@ -136,7 +136,8 @@ to any tenant's patient records.
 **Lifecycle.** `Provisioning → Active ⇄ Suspended`, with `Failed` reachable from provisioning
 and recoverable by re-running the operation. Every operation is idempotent. Operators drive it
 with the host's CLI (`dotnet Betsi.Core.dll tenants …`); there is deliberately no HTTP API for
-it until Phase G adds authentication. See [`runbooks/tenant-operations.md`](runbooks/tenant-operations.md).
+it, because it crosses tenants and so falls outside the per-tenant authorisation model. See
+[`runbooks/tenant-operations.md`](runbooks/tenant-operations.md).
 
 **Registry snapshot.** Each instance serves requests from an in-memory snapshot refreshed every
 `ControlPlane:RegistryRefreshInterval` (30s). The request path never waits on the control
