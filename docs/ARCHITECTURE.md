@@ -302,9 +302,10 @@ instance can serve tenants, and is what the load balancer and the deployment smo
 
 **Telemetry.** Newline-delimited JSON logs outside Development, OpenTelemetry traces and
 metrics over OTLP, and a correlation id per request that is echoed to the caller and carried on
-every log line. A caller-supplied correlation id is honoured after being length-capped and
-checked for control characters: it is attacker-controlled text that reaches an operator's
-console. Metrics carry tenant and command, never a patient identifier — a metrics store has no
+every log line. A caller-supplied correlation id is honoured after being checked for control
+characters and capped at the width of the column a command envelope stores it in: it is
+attacker-controlled text that reaches an operator's console, and an id too long to persist
+would turn a traced command into a database error. Metrics carry tenant and command, never a patient identifier — a metrics store has no
 audit trail and a long retention.
 
 See [`runbooks/deployment.md`](runbooks/deployment.md) and

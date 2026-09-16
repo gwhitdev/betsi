@@ -154,9 +154,23 @@ Key ids beginning `dev-` are refused by any non-Development environment at start
 
 ---
 
+## Backup, restore, export and destruction
+
+These have their own runbook: [`backup-and-restore.md`](backup-and-restore.md). In short,
+`tenants backup`, `tenants restore`, `tenants export` and `tenants destroy`, each audited in
+`control.AuditLog` like every command above.
+
+Two things to carry across from here:
+
+- **Back up `betsi_control` as well as each tenant database, and restore them together.** A
+  tenant database restored without its control-plane row is unreachable, and the control plane
+  also holds the Data Protection key ring that every webhook and inbound integration secret is
+  encrypted with.
+- **`tenants destroy` is irreversible.** It needs the tenant suspended and its name typed back,
+  and it leaves a tombstone record so the database name is never reissued.
+
 ## Not yet automated
 
-Backup, restore, tenant export and tenant destruction (MVP-009's backup and restore-test
-criteria) are Phase I. Until then, back up `betsi_control` and each tenant database with the
-platform's standard SQL Server backup job, and restore them **together**: a tenant database
-restored without its control-plane row is unreachable.
+Provisioning is an operator command, not infrastructure as code: a new tenant is a decision with
+a licence and a database behind it, and it is audited as such. If a site provisions often enough
+for that to chafe, the CLI is the thing to script.

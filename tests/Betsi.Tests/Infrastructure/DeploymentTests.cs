@@ -213,12 +213,15 @@ public class CorrelationIdTests
     }
 
     [Fact]
-    public void A_very_long_id_is_capped_rather_than_refused()
+    public void A_very_long_id_is_capped_to_what_the_idempotency_record_can_store()
     {
+        // The command envelope persists its correlation id in an nvarchar(100) column. An id
+        // this accepted but the database could not store would turn a caller's long header
+        // into a 500 at the point the command is recorded.
         var sanitised = CorrelationIdMiddleware.Sanitise(new string('a', 500));
 
         sanitised.ShouldNotBeNull();
-        sanitised.Length.ShouldBe(128);
+        sanitised.Length.ShouldBe(CorrelationIdMiddleware.MaxLength);
     }
 }
 

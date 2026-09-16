@@ -119,7 +119,13 @@ public sealed class BetsiMetrics : IDisposable
 public sealed class CorrelationIdMiddleware
 {
     public const string HeaderName = "X-Correlation-Id";
-    private const int MaxLength = 128;
+
+    /// <summary>
+    /// Matches the <c>IdempotencyRecord.CorrelationId</c> column. A command envelope persists
+    /// its correlation id, so an id this middleware accepts must be one that can be stored —
+    /// otherwise a caller with a long id gets a 500 from the database rather than a command.
+    /// </summary>
+    internal const int MaxLength = 100;
 
     private readonly RequestDelegate _next;
     private readonly ILogger<CorrelationIdMiddleware> _logger;

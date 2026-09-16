@@ -8,8 +8,18 @@ may be added: treat an unknown field as ignorable and an unknown enum value as "
 
 ## Authentication
 
-Every endpoint except `/health` and `/openapi` requires credentials. A request without them is
-401 `UNAUTHENTICATED`.
+Every endpoint except the health probes and `/openapi` requires credentials. A request without
+them is 401 `UNAUTHENTICATED`.
+
+The probes are anonymous because a load balancer and an orchestrator cannot hold credentials:
+`/health/live` (the process is up; touches no database), `/health/ready` (this instance can
+serve tenants) and `/health` (the aggregate). None of them discloses anything but a status and,
+on `/health`, which named check failed.
+
+Every response carries an `X-Correlation-Id`. Send your own to have it echoed back and recorded
+against the request in this service's logs — useful for tracing a call that began in an EPR or
+integration engine. It is length-capped at 100 characters — the width of the column a command
+envelope stores it in — and one containing control characters is replaced rather than trusted.
 
 **Bearer tokens (all environments).** An access token from the configured OIDC provider
 (`Authentication:Jwt`). Tokens must be signed with RS256, PS256 or ES256, unexpired, and issued
@@ -320,7 +330,9 @@ remain the primary API.
   with a different request, or by another actor, is 422 `IDEMPOTENCY_KEY_REUSED`. A command that
   failed releases its key, so a corrected request can reuse it.
 - Errors are problem details with `commandId` and `correlationId` extensions. The correlation
-  id is also echoed in `X-Correlation-Id`.
+  id is also echoed in `X-Correlation-Id`. An envelope with no `correlationId` of its own takes
+  the one this request already has, so every command is traceable whether or not the caller
+  supplied an id.
 
 ## Webhooks
 
