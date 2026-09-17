@@ -1,8 +1,13 @@
 # Betsi Patient Flow Platform – Implementation Roadmap
 
-**Status**: Specification Ready for MVP Development  
-**Last Updated**: 2025-01-31  
-**Reference Docs**: [design/spec.md](../design/spec.md), [design/REPORT_FINDINGS_MAPPING.md](../design/REPORT_FINDINGS_MAPPING.md)
+**Status**: MVP core delivered; clinical safety, UI and operations outstanding  
+**Last Updated**: 2026-09-16  
+**Reference Docs**: [design/spec.md](../design/spec.md), [design/REPORT_FINDINGS_MAPPING.md](../design/REPORT_FINDINGS_MAPPING.md)  
+**Live state**: [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md) · **Delivery plan**: [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)
+
+> This document is the stakeholder-level roadmap. Engineering phases, what has been verified and
+> when, and the day-to-day plan live in the two documents above; where they disagree with this
+> one, they are right.
 
 ---
 
@@ -21,7 +26,21 @@ Betsi Patient Flow is a multi-tenant SaaS platform for NHS emergency departments
 
 ## Current Phase: MVP Development (Phase 0 → Phase 1)
 
-**Timeline**: Estimated 30 days (Phase 0 development) followed by pilot phases.
+**Timeline**: The original "30 days" estimate was replaced on 2026-09-12 by a phase plan of
+roughly 58 engineer-days to a pilot-ready MVP, plus 10 for paediatric safety. About 46 of those
+are delivered. Remaining: the user interface (~15d), deployment and operations (~7d), and
+clinical safety features (~10d, blocked on governance). One developer: roughly 6–8 weeks of work
+left, plus whatever the clinical safety appointment takes.
+
+**Delivered so far** (unmerged, in [PR #1](https://github.com/gwhitdev/betsi/pull/1) and
+[PR #2](https://github.com/gwhitdev/betsi/pull/2), both with CI green):
+multi-tenant core with database-per-tenant isolation and licensing; the waiting-time escalation
+engine with change-controlled thresholds and missed-acknowledgement follow-up; escalation board,
+episode and waiting-board APIs; OIDC authentication with role-based permissions; signed webhooks
+and HL7 v2 / FHIR R4 arrival and discharge feeds; 355 automated tests in CI.
+
+**Not yet started**: the staff-facing user interface, paediatric and observation features, and
+production deployment and operations.
 
 **Target Release Criteria**:
 - Display-only and manual-entry workflows (no automatic escalations or AI)
@@ -47,7 +66,7 @@ Betsi Patient Flow is a multi-tenant SaaS platform for NHS emergency departments
 ## Key Themes & Epics
 
 ### Theme 1: Core Patient Flow Engine (MVP Foundational)
-**Status**: In Discovery & Architecture  
+**Status**: ✅ Delivered (Phases A, B, D)  
 **Issues**: #MVP-001 through #MVP-010
 
 Establish the transactional domain model, event sourcing, and command handling for patient episodes, locations, queues, and escalations.
@@ -61,7 +80,7 @@ Establish the transactional domain model, event sourcing, and command handling f
 ---
 
 ### Theme 2: Waiting-Time Escalation & Visibility (MVP Critical)
-**Status**: In Design → Development  
+**Status**: ✅ Delivered as APIs (Phase E); dashboard UI is Theme 7  
 **Issues**: #MVP-020 through #MVP-025
 
 Implement automatic waiting-time escalations at configured thresholds and escalation visibility dashboard to address prolonged-wait findings from ED report.
@@ -75,7 +94,7 @@ Implement automatic waiting-time escalations at configured thresholds and escala
 ---
 
 ### Theme 3: Paediatric Safety & Safeguarding (MVP Critical)
-**Status**: In Design → Development  
+**Status**: ⛔ Not started — blocked on a named clinical safety officer and a DCB0129 hazard log  
 **Issues**: #MVP-030 through #MVP-035
 
 Support paediatric-specific workflows, vital signs, safeguarding flags, and trained-staff tracking to address paediatric safety gaps from ED report.
@@ -90,7 +109,7 @@ Support paediatric-specific workflows, vital signs, safeguarding flags, and trai
 ---
 
 ### Theme 4: Clinical Observation & Deterioration (MVP Critical)
-**Status**: In Design → Development  
+**Status**: ⛔ Not started — same clinical governance gate as Theme 3  
 **Issues**: #MVP-040 through #MVP-045
 
 Capture structured clinical observations, enable manual deterioration flagging, and support pain assessment to address delayed-response findings.
@@ -105,7 +124,7 @@ Capture structured clinical observations, enable manual deterioration flagging, 
 ---
 
 ### Theme 5: Multi-Tenant SaaS Isolation & Governance (MVP Foundational)
-**Status**: In Architecture → Development  
+**Status**: ✅ Delivered (Phase D); multi-site regional configuration (MVP-054) outstanding  
 **Issues**: #MVP-050 through #MVP-055
 
 Ensure database-per-tenant isolation, multi-site support, and configuration change control for safe SaaS operations.
@@ -120,7 +139,7 @@ Ensure database-per-tenant isolation, multi-site support, and configuration chan
 ---
 
 ### Theme 6: API, Integration, & Authentication (MVP Foundational)
-**Status**: In Design → Development  
+**Status**: ✅ Delivered (Phase G); REST polling adapter and .NET SDK (both P2) deferred  
 **Issues**: #MVP-060 through #MVP-070
 
 Deliver versioned REST API, webhook contracts, OAuth2/OpenID Connect authentication, and EPR integration adapters.
@@ -135,7 +154,7 @@ Deliver versioned REST API, webhook contracts, OAuth2/OpenID Connect authenticat
 ---
 
 ### Theme 7: UI/UX – Waiting Board & Power User Editor (MVP Critical)
-**Status**: In Design → Development  
+**Status**: ⏳ Not started (Phase H) — the read APIs it needs are delivered  
 **Issues**: #MVP-080 through #MVP-095
 
 Build task-oriented, accessible UI for waiting board, escalation dashboard, and power-user configuration workspace.
@@ -150,7 +169,7 @@ Build task-oriented, accessible UI for waiting board, escalation dashboard, and 
 ---
 
 ### Theme 8: Testing, Deployment, & Operations (MVP Foundational)
-**Status**: In Architecture → Development  
+**Status**: 🔄 Testing and CI delivered (Phase C); deployment, monitoring and backup outstanding (Phase I)  
 **Issues**: #MVP-100 through #MVP-115
 
 Establish end-to-end testing, CI/CD pipelines, deployment automation, and operational observability.
@@ -166,14 +185,19 @@ Establish end-to-end testing, CI/CD pipelines, deployment automation, and operat
 
 ## Phased Rollout Plan
 
-### Phase 0 → Phase 1: MVP Development & Internal Pilot (4 weeks)
+### Phase 0 → Phase 1: MVP Development & Internal Pilot
 **Entrance Criteria**: Specification approved by clinical and technical stakeholders.  
 **Exit Criteria**: All MVP acceptance criteria met; clinical safety officer sign-off.
 
-- Week 1: Infrastructure setup, domain modeling, transactional event/audit.
-- Week 2: Core aggregates (PatientEpisode, Escalation, Location).
-- Week 3: API endpoints, waiting-time escalations, paediatric routing.
-- Week 4: UI (waiting board, escalation dashboard), deployment, testing.
+Progress against the engineering phases in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md):
+
+- ✅ Foundation, write path, tests and CI (Phases A–C).
+- ✅ Multi-tenancy, licensing and operator tooling (Phase D).
+- ✅ Waiting-time escalation engine, board and audit APIs (Phase E).
+- ✅ Authentication, permissions, queries, webhooks, HL7/FHIR (Phase G).
+- ⬜ Paediatric and observation features (Phase F) — blocked on clinical governance.
+- ⬜ Staff user interface (Phase H).
+- ⬜ Deployment, monitoring, backup and restore (Phase I).
 
 **Deliverables**: MVP application, runbook, training materials.
 
@@ -235,6 +259,10 @@ See [GitHub Issues](#github-issues) below for detailed breakdown by theme.
 
 ## GitHub Issues
 
+`[x]` delivered · `[~]` partly delivered · `[ ]` not started. Verified state, with dates and
+evidence, is in [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md). The GitHub Project
+itself has not been created yet (see GITHUB_PROJECT_SETUP.md); this file is the tracker.
+
 Issues are organized by theme and labeled with:
 - **Priority**: P0 (CLI/blocking), P1 (high impact), P2 (medium), P3 (low/nice-to-have)
 - **Type**: Feature, Bug, Tech-Debt, Documentation
@@ -242,24 +270,24 @@ Issues are organized by theme and labeled with:
 - **Component**: Core, API, UI, Integration, Testing, Ops
 
 ### MVP-001 through MVP-010: Core Patient Flow Engine
-- [ ] [MVP-001](#mvp-001-design-bounded-contexts-and-aggregates) – Design bounded contexts and aggregates
-- [ ] [MVP-002](#mvp-002-implement-patientepisode-aggregate) – Implement PatientEpisode aggregate
-- [ ] [MVP-003](#mvp-003-implement-location-and-queue-aggregates) – Implement Location and Queue aggregates
-- [ ] [MVP-004](#mvp-004-implement-escalation-aggregate) – Implement Escalation aggregate
-- [ ] [MVP-005](#mvp-005-implement-transactional-event-log-and-outbox) – Implement transactional event log and outbox
-- [ ] [MVP-006](#mvp-006-design-and-implement-command-handlers) – Design and implement command handlers
-- [ ] [MVP-007](#mvp-007-multi-tenant-context-and-isolation) – Multi-tenant context and isolation
-- [ ] [MVP-008](#mvp-008-offline-key-validator-and-licensing) – Offline key validator and licensing module
-- [ ] [MVP-009](#mvp-009-database-per-tenant-provisioning) – Database-per-tenant provisioning and migrations
-- [ ] [MVP-010](#mvp-010-audit-logging-and-compliance) – Audit logging and compliance event stream
+- [x] [MVP-001](#mvp-001-design-bounded-contexts-and-aggregates) – Design bounded contexts and aggregates
+- [x] [MVP-002](#mvp-002-implement-patientepisode-aggregate) – Implement PatientEpisode aggregate
+- [x] [MVP-003](#mvp-003-implement-location-and-queue-aggregates) – Implement Location and Queue aggregates
+- [x] [MVP-004](#mvp-004-implement-escalation-aggregate) – Implement Escalation aggregate
+- [x] [MVP-005](#mvp-005-implement-transactional-event-log-and-outbox) – Implement transactional event log and outbox
+- [x] [MVP-006](#mvp-006-design-and-implement-command-handlers) – Design and implement command handlers
+- [x] [MVP-007](#mvp-007-multi-tenant-context-and-isolation) – Multi-tenant context and isolation
+- [x] [MVP-008](#mvp-008-offline-key-validator-and-licensing) – Offline key validator and licensing module
+- [x] [MVP-009](#mvp-009-database-per-tenant-provisioning) – Database-per-tenant provisioning and migrations
+- [x] [MVP-010](#mvp-010-audit-logging-and-compliance) – Audit logging and compliance event stream
 
 ### MVP-020 through MVP-025: Waiting-Time Escalation & Visibility
-- [ ] [MVP-020](#mvp-020-waiting-time-escalation-policy) – Waiting-time escalation policy configuration
-- [ ] [MVP-021](#mvp-021-automatic-escalation-generation) – Automatic escalation generation and triggers
-- [ ] [MVP-022](#mvp-022-manual-follow-up-exceptions) – Manual-follow-up exception workflow
-- [ ] [MVP-023](#mvp-023-escalation-visibility-dashboard) – Escalation visibility dashboard (active, pending, history)
-- [ ] [MVP-024](#mvp-024-escalation-audit-trail) – Escalation audit trail and status transitions
-- [ ] [MVP-025](#mvp-025-escalation-acknowledgement-workflow) – Escalation acknowledgement and resolution workflow
+- [x] [MVP-020](#mvp-020-waiting-time-escalation-policy) – Waiting-time escalation policy configuration
+- [x] [MVP-021](#mvp-021-automatic-escalation-generation) – Automatic escalation generation and triggers
+- [x] [MVP-022](#mvp-022-manual-follow-up-exceptions) – Manual-follow-up exception workflow
+- [~] [MVP-023](#mvp-023-escalation-visibility-dashboard) – Escalation visibility dashboard (active, pending, history) — *APIs delivered; dashboard UI in Theme 7*
+- [x] [MVP-024](#mvp-024-escalation-audit-trail) – Escalation audit trail and status transitions
+- [~] [MVP-025](#mvp-025-escalation-acknowledgement-workflow) – Escalation acknowledgement and resolution workflow — *commands and APIs delivered; UI workflow and clinical approval outstanding*
 
 ### MVP-030 through MVP-035: Paediatric Safety & Safeguarding
 - [ ] [MVP-030](#mvp-030-age-based-workflow-routing) – Age-based workflow routing
@@ -278,25 +306,25 @@ Issues are organized by theme and labeled with:
 - [ ] [MVP-045](#mvp-045-risk-flag-capture) – Risk-flag capture (free-form clinical concerns)
 
 ### MVP-050 through MVP-055: Multi-Tenant SaaS & Governance
-- [ ] [MVP-050](#mvp-050-database-per-tenant-provisioning) – Database-per-tenant provisioning
-- [ ] [MVP-051](#mvp-051-tenant-identity-and-routing) – Tenant identity resolution and routing
-- [ ] [MVP-052](#mvp-052-configuration-versioning-and-approval) – Configuration versioning and approval workflow
-- [ ] [MVP-053](#mvp-053-site-specific-escalation-thresholds) – Site-specific escalation threshold management
+- [x] [MVP-050](#mvp-050-database-per-tenant-provisioning) – Database-per-tenant provisioning
+- [x] [MVP-051](#mvp-051-tenant-identity-and-routing) – Tenant identity resolution and routing
+- [~] [MVP-052](#mvp-052-configuration-versioning-and-approval) – Configuration versioning and approval workflow — *escalation policy is versioned and approved; board layout and integration config are not*
+- [x] [MVP-053](#mvp-053-site-specific-escalation-thresholds) – Site-specific escalation threshold management
 - [ ] [MVP-054](#mvp-054-multi-site-support) – Multi-site support and regional configuration
-- [ ] [MVP-055](#mvp-055-tenant-audit-logging) – Tenant-scoped audit logging and compliance events
+- [x] [MVP-055](#mvp-055-tenant-audit-logging) – Tenant-scoped audit logging and compliance events
 
 ### MVP-060 through MVP-070: API, Integration, & Authentication
-- [ ] [MVP-060](#mvp-060-rest-api-design-and-openapi) – REST API v1 design and OpenAPI spec
-- [ ] [MVP-061](#mvp-061-command-submission-endpoint) – Command submission endpoint (/api/v1/commands)
-- [ ] [MVP-062](#mvp-062-episode-query-endpoints) – Episode query endpoints (/api/v1/episodes/{id})
-- [ ] [MVP-063](#mvp-063-webhook-contract-and-inbound) – Webhook contract and inbound mapping
-- [ ] [MVP-064](#mvp-064-oubound-escalation-webhooks) – Outbound escalation/event webhooks
-- [ ] [MVP-065](#mvp-065-oauth2-openid-authentication) – OAuth2/OpenID Connect authentication
-- [ ] [MVP-066](#mvp-066-fhir-hl7-integration-adapter) – FHIR/HL7 integration adapter (EPR/ambulance)
-- [ ] [MVP-067](#mvp-067-rest-integration-adapter) – REST integration adapter for third-party systems
-- [ ] [MVP-068](#mvp-068-api-error-handling-rfc9457) – API error handling (RFC 9457 problem details)
-- [ ] [MVP-069](#mvp-069-api-documentation-and-sdk) – API documentation and .NET client SDK
-- [ ] [MVP-070](#mvp-070-api-versioning-strategy) – API versioning strategy and backward compatibility
+- [x] [MVP-060](#mvp-060-rest-api-design-and-openapi) – REST API v1 design and OpenAPI spec
+- [x] [MVP-061](#mvp-061-command-submission-endpoint) – Command submission endpoint (/api/v1/commands)
+- [x] [MVP-062](#mvp-062-episode-query-endpoints) – Episode query endpoints (/api/v1/episodes/{id})
+- [x] [MVP-063](#mvp-063-webhook-contract-and-inbound) – Webhook contract and inbound mapping
+- [x] [MVP-064](#mvp-064-oubound-escalation-webhooks) – Outbound escalation/event webhooks
+- [x] [MVP-065](#mvp-065-oauth2-openid-authentication) – OAuth2/OpenID Connect authentication
+- [~] [MVP-066](#mvp-066-fhir-hl7-integration-adapter) – FHIR/HL7 integration adapter (EPR/ambulance) — *ADT arrival/discharge and FHIR Encounter delivered; observations await Theme 4*
+- [ ] [MVP-067](#mvp-067-rest-integration-adapter) – REST integration adapter for third-party systems — *P2, deferred*
+- [x] [MVP-068](#mvp-068-api-error-handling-rfc9457) – API error handling (RFC 9457 problem details)
+- [ ] [MVP-069](#mvp-069-api-documentation-and-sdk) – API documentation and .NET client SDK — *P2, deferred*
+- [x] [MVP-070](#mvp-070-api-versioning-strategy) – API versioning strategy and backward compatibility
 
 ### MVP-080 through MVP-095: UI/UX – Waiting Board & Dashboards
 - [ ] [MVP-080](#mvp-080-waiting-board-dashboard) – Waiting board dashboard (lanes, filters, columns)
@@ -317,12 +345,12 @@ Issues are organized by theme and labeled with:
 - [ ] [MVP-095](#mvp-095-ui-testing-and-qa) – UI testing and QA automation
 
 ### MVP-100 through MVP-115: Testing, Deployment, & Operations
-- [ ] [MVP-100](#mvp-100-unit-testing-framework) – Unit testing framework and domain logic tests
-- [ ] [MVP-101](#mvp-101-integration-testing) – Integration testing (API, persistence, outbox)
+- [x] [MVP-100](#mvp-100-unit-testing-framework) – Unit testing framework and domain logic tests
+- [x] [MVP-101](#mvp-101-integration-testing) – Integration testing (API, persistence, outbox)
 - [ ] [MVP-102](#mvp-102-bdd-acceptance-tests) – BDD acceptance tests (Gherkin scenarios)
 - [ ] [MVP-103](#mvp-103-api-contract-tests) – API contract tests (webhooks, third-party integrations)
-- [ ] [MVP-104](#mvp-104-database-migration-testing) – Database migration testing and rollback
-- [ ] [MVP-105](#mvp-105-ci-cd-pipeline) – CI/CD pipeline (GitHub Actions)
+- [~] [MVP-104](#mvp-104-database-migration-testing) – Database migration testing and rollback — *migration drift and apply tested in CI; rollback drill outstanding*
+- [~] [MVP-105](#mvp-105-ci-cd-pipeline) – CI/CD pipeline (GitHub Actions) — *CI delivered; CD outstanding*
 - [ ] [MVP-106](#mvp-106-staging-deployment) – Staging environment deployment automation
 - [ ] [MVP-107](#mvp-107-production-deployment) – Production deployment (blue/green or canary)
 - [ ] [MVP-108](#mvp-108-database-backup-and-restore) – Database backup, restore, and point-in-time recovery
@@ -331,7 +359,7 @@ Issues are organized by theme and labeled with:
 - [ ] [MVP-111](#mvp-111-performance-testing-and-tuning) – Performance testing and tuning (p95/p99 latency)
 - [ ] [MVP-112](#mvp-112-security-testing-and-penetration) – Security testing and penetration testing
 - [ ] [MVP-113](#mvp-113-dspt-compliance-checklist) – DSPT compliance checklist
-- [ ] [MVP-114](#mvp-114-runbook-and-operations) – Runbook and operations documentation
+- [~] [MVP-114](#mvp-114-runbook-and-operations) – Runbook and operations documentation — *tenant, escalation-policy and integration runbooks written; deployment and incident runbooks outstanding*
 - [ ] [MVP-115](#mvp-115-training-materials) – Training materials and role-specific procedures
 
 ---
@@ -339,34 +367,40 @@ Issues are organized by theme and labeled with:
 ## Success Criteria & Acceptance Gates
 
 ### MVP Release Criteria (Phase 0 → Phase 1)
-- ✅ Technical code review approved; all defects resolved
-- ✅ Build succeeds; all automated tests pass
-- ✅ Display-only workflows (arrival, triage, waiting, movement, discharge) with manual entry
-- ✅ Identity matching and conflict resolution UI tested
-- ✅ EPR integration adapter tested with sample data
-- ✅ Escalation alert delivery and manual acknowledgement workflow tested end-to-end
-- ✅ **Waiting-time escalation policy tested** at 4h/6h/8h thresholds; manual-follow-up exceptions working
-- ✅ **Escalation visibility dashboard functional**: active, pending, history, metrics, real-time updates
-- ✅ **Paediatric workflows tested**: age-based routing, vital-sign ranges, safeguarding flags, trained-staff tracking
-- ✅ **Deterioration and pain escalation tested**: manual flagging, pain ≥5 escalation, age-appropriate tools
-- ✅ Database-per-tenant provisioning and data isolation tested
-- ✅ Audit logging of all commands, authorization decisions, escalation transitions verified
-- ✅ DSPT checklist compliance items completed
-- ✅ Runbook documentation and role templates provided
+
+These are gates, not achievements: ✅ is met and evidenced, 🔄 partly, ⬜ not yet.
+
+| | Criterion |
+|---|---|
+| 🔄 | Technical code review approved; all defects resolved — two PRs await review |
+| ✅ | Build succeeds; all automated tests pass — 355 tests green in CI, 0 warnings |
+| 🔄 | Display-only workflows (arrival, triage, waiting, movement, discharge) with manual entry — APIs delivered, UI outstanding |
+| ⬜ | Identity matching and conflict resolution UI tested |
+| 🔄 | EPR integration adapter tested with sample data — HL7 and FHIR arrival/discharge tested; no live EPR yet |
+| 🔄 | Escalation alert delivery and manual acknowledgement workflow tested end-to-end — in-app workflow and webhooks tested; UI outstanding |
+| ✅ | **Waiting-time escalation policy tested** at 4h/6h/8h thresholds; manual-follow-up exceptions working |
+| 🔄 | **Escalation visibility dashboard functional**: active, pending, history, metrics — board API delivered; UI and real-time push outstanding |
+| ⬜ | **Paediatric workflows tested**: age-based routing, vital-sign ranges, safeguarding flags, trained-staff tracking |
+| ⬜ | **Deterioration and pain escalation tested**: manual flagging, pain ≥5 escalation, age-appropriate tools |
+| ✅ | Database-per-tenant provisioning and data isolation tested |
+| ✅ | Audit logging of all commands, authorization decisions, escalation transitions verified |
+| ⬜ | DSPT checklist compliance items completed |
+| 🔄 | Runbook documentation and role templates provided — tenant, escalation-policy and integration runbooks written |
+| ⬜ | Clinical safety officer appointed, hazard log started, clinical safety case approved |
 
 ### Phase 1 Pilot Gate (After 1 week pilot use)
-- ✅ System remains available and operational (99.9% uptime)
-- ✅ No safety incidents or unrecoverable data loss
-- ✅ Critical escalation workflows function as designed
-- ✅ Staff can complete key tasks without excessive help requests
-- ✅ Escalation procedures and role-based acknowledgement work as intended
+- [ ] System remains available and operational (99.9% uptime)
+- [ ] No safety incidents or unrecoverable data loss
+- [ ] Critical escalation workflows function as designed
+- [ ] Staff can complete key tasks without excessive help requests
+- [ ] Escalation procedures and role-based acknowledgement work as intended
 
 ### Phase 2 Full Adoption Gate (After pilot success)
-- ✅ All workflows validated with representative patient volumes
-- ✅ Training and role-specific procedures rolled out
-- ✅ Support model and incident escalation procedures documented and tested
-- ✅ Audit evidence and SLO performance acceptable to site operations team
-- ✅ Security review and DSPT submission completed
+- [ ] All workflows validated with representative patient volumes
+- [ ] Training and role-specific procedures rolled out
+- [ ] Support model and incident escalation procedures documented and tested
+- [ ] Audit evidence and SLO performance acceptable to site operations team
+- [ ] Security review and DSPT submission completed
 
 ---
 

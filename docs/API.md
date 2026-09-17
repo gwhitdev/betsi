@@ -1,24 +1,57 @@
 # API reference
 
-Base path `/api/v1`. All request and response bodies are JSON. Interactive documentation is
-served at `/swagger` in Development.
+Base path `/api/v1`. All request and response bodies are JSON and all times are UTC. The
+contract is published at `/openapi/v1.json` in every environment and checked in at
+[`openapi/v1.json`](openapi/v1.json); interactive documentation is at `/swagger` in Development.
+Versioning rules: [`API-VERSIONING.md`](API-VERSIONING.md). Within v1, fields and enum values
+may be added: treat an unknown field as ignorable and an unknown enum value as "other".
 
-## Every request names a tenant
+## Authentication
 
-Requests are rejected with 400 if no tenant can be resolved, 404 if the tenant is not served
-by this instance, 403 if it has been suspended, and 503 (with `Retry-After`) if it is not ready
-— provisioning, failed, or on an outdated schema. `/health`, `/swagger` and `/openapi` are
-exempt. The reason a tenant is unavailable is never returned; operators see it in the logs and
-via `tenants list`.
+Every endpoint except `/health` and `/openapi` requires credentials. A request without them is
+401 `UNAUTHENTICATED`.
 
-| Source | Header (Development only) | Claim (all environments) |
-|---|---|---|
-| Tenant | `X-Betsi-Tenant` | `betsi:tenant_id` |
-| Actor | `X-Betsi-Actor` | `sub` / `NameIdentifier` |
-| Actor role | `X-Betsi-Actor-Role` | `role` |
+**Bearer tokens (all environments).** An access token from the configured OIDC provider
+(`Authentication:Jwt`). Tokens must be signed with RS256, PS256 or ES256, unexpired, and issued
+by the configured issuer for the configured audience. Claims read, all configurable under
+`Authentication:Claims`:
 
-Header-supplied tenants are unauthenticated. The application refuses to start with
-`TenantResolution:AllowHeaderFallback` enabled outside Development.
+| Claim (default name) | Meaning |
+|---|---|
+| `betsi:tenant_id` | The tenant. Required. A request's `X-Betsi-Tenant` header, if sent, must match it (403 `TENANT_MISMATCH`). |
+| `sub` | The user. A non-GUID subject is mapped to a stable id scoped by issuer. |
+| `roles` | The user's roles. |
+| `betsi:acting_role` | The role selected for this session, where the provider supports it (e.g. NHS CIS2). |
+
+A token with several roles and no acting-role claim must name one with the
+`X-Betsi-Acting-Role` header (else 403 `ACTING_ROLE_REQUIRED`), and it must be a role the token
+holds. `System` and `Integration` cannot be claimed (403 `RESERVED_ROLE`).
+
+**Development headers.** In Development only, `X-Betsi-Tenant`, `X-Betsi-Actor` and
+`X-Betsi-Actor-Role` authenticate a request. They are ignored whenever a bearer token is present,
+and the application refuses to start with them enabled elsewhere.
+
+**Signed messages.** The inbound integration endpoint authenticates by HMAC signature instead
+(see *Integrations*).
+
+## Permissions
+
+Endpoints and commands require permissions; roles grant them. A role not listed has none.
+
+| Role | Permissions |
+|---|---|
+| Nurse, Staff Nurse, Nurse in Charge, Senior Clinician, Doctor, Consultant | register, care, discharge, queues, episodes.read, escalations raise/respond/read |
+| Waiting-room Coordinator, Bed Manager | register, queues, episodes.read, escalations raise/respond/read; Bed Manager also locations |
+| Receptionist | register, episodes.read, escalations.raise |
+| Matron, Clinical Lead | register, care, discharge, episodes.read, escalations raise/respond/read, policy propose/decide; Matron also queues |
+| Operations Manager, Site Manager | episodes.read, escalations respond/read, policy decide; Operations Manager also policy propose, locations |
+| Site Administrator | policy propose, locations, webhooks, integration sources. **No patient data.** |
+| *every staff role* | policy.read, license.read |
+| Integration *(reserved)* | integration.ingest, register, discharge |
+
+Refusals are 403 `FORBIDDEN` with the missing `permission`, and are recorded in the audit log
+along with every read of patient data (episode, boards, escalation audit trail, quarantined
+messages).
 
 ## Command results and versions
 
@@ -35,19 +68,28 @@ a problem document, never a 200.
 ## Failures (RFC 9457)
 
 Responses use `application/problem+json` and carry `type`, `title`, `status`, `detail`,
-`instance` and `traceId`.
+`instance`, `traceId` and a stable **`code`**. Branch on `code`; titles and details may change.
+Codes are never renamed or reused within v1.
 
-| Status | When | Extra fields |
-|---|---|---|
-| 400 | No tenant on the request | |
-| 403 | Tenant suspended | |
-| 403 | Licence-gated operation in restricted mode (`type` ends `/license-restricted`) | `feature`, `licenseStatus` |
-| 404 | Unknown tenant, or an aggregate that does not exist in this tenant | |
-| 409 | The aggregate changed since you read it | `expectedVersion`, `actualVersion` |
-| 422 | Validation failed | `errors` — a map of field name to messages |
-| 422 | The operation is not valid in the aggregate's current state | |
-| 500 | Unexpected | `detail` only outside production |
-| 503 | Tenant not ready | |
+| Status | `code` | When | Extra fields |
+|---|---|---|---|
+| 400 | `TENANT_NOT_SPECIFIED` | Credentials carry no tenant | |
+| 400 | `BAD_REQUEST` | Invalid query parameter or request | |
+| 400 | `UNKNOWN_COMMAND_TYPE` | Command envelope names no known command | |
+| 401 | `UNAUTHENTICATED` | Missing, expired or invalid credentials | |
+| 401 | `INVALID_SIGNATURE` | Inbound message signature not verified | |
+| 403 | `FORBIDDEN` | Role lacks the permission | `permission` |
+| 403 | `ACTING_ROLE_REQUIRED`, `RESERVED_ROLE`, `TENANT_MISMATCH` | See *Authentication* | |
+| 403 | `TENANT_SUSPENDED` | Tenant suspended | |
+| 403 | `LICENSE_RESTRICTED` | Licence-gated operation in restricted mode | `feature`, `licenseStatus` |
+| 404 | `NOT_FOUND`, `UNKNOWN_TENANT` | No such record in this tenant, or no such tenant | |
+| 409 | `CONCURRENCY_CONFLICT` | The aggregate changed since you read it | `expectedVersion`, `actualVersion` |
+| 409 | `CONFLICT`, `IDEMPOTENCY_IN_PROGRESS` | A conflicting change, or the same idempotency key still running | |
+| 422 | `VALIDATION_ERROR` | Validation failed | `errors` — field name to messages |
+| 422 | `INVALID_STATE_TRANSITION` | Not valid in the aggregate's current state | |
+| 422 | `IDEMPOTENCY_KEY_REUSED` | Key already used for a different request | |
+| 500 | `INTERNAL_ERROR`, `TENANT_ISOLATION` | Unexpected | `detail` only outside production |
+| 503 | `TENANT_UNAVAILABLE` | Tenant not ready | |
 
 A 404 is returned rather than 403 when another tenant's record is named, so that callers
 cannot probe for the existence of records they cannot see.
@@ -134,8 +176,8 @@ supervisory role closes it with an outcome: `AcknowledgedLate`, `Reassigned`,
 up the same way, even with no policy in force.
 
 Supervisory roles, for approving policy and closing any follow-up exception, are `Clinical
-Lead`, `Operations Manager`, `Site Manager` and `Matron`. Until Phase G roles come from an
-unauthenticated header, so this is a safeguard against mistakes, not a security control.
+Lead`, `Operations Manager`, `Site Manager` and `Matron`. The acting role comes from the
+authenticated credentials (see *Authentication*), so these checks are enforced, not advisory.
 
 Raising an escalation requires a `responsibleRole`; an escalation nobody owns is the failure
 mode the inspection report describes. Raising one for a patient who does not exist is a 404.
@@ -158,8 +200,8 @@ Read live from the tenant database, so staleness is however often the client pol
 | `history` | Resolved and closed escalations within `historyDays` (1–30). |
 | `truncated` | True if any list hit 500 items. |
 
-Every card includes a patient summary (name, state, arrival, minutes since arrival). **This is
-patient data on an unauthenticated read endpoint until Phase G.**
+Every card includes a patient summary (name, state, arrival, minutes since arrival). Reading the
+board requires `escalations.read` and is recorded in the audit log.
 
 ### Audit trail
 
@@ -240,8 +282,130 @@ the same person waiting in two places and double-count them against the threshol
 In restricted mode `features` is empty and `POST /locations` and `POST /queues` return 403.
 Every patient and escalation endpoint keeps working.
 
+## Episodes and the waiting board
+
+| Method | Path | Permission | Purpose |
+|---|---|---|---|
+| GET | `/episodes/{id}` | episodes.read | Demographics, state, timings, escalations, open follow-ups. |
+| GET | `/boards/waiting` | episodes.read | Waiting and awaiting-treatment patients, longest wait first. |
+
+`/boards/waiting` filters: `locationId`, `state` (`Waiting` \| `AwaitingTreatment`),
+`minWaitingMinutes`, `minAgeYears`, `maxAgeYears`; `pageSize` 1–200 (default 50). Pages are
+keyset-paginated: pass the response's `nextCursor` as `cursor`; it is null on the last page.
+Pages stay consistent while patients arrive and leave. Triage acuity is not yet modelled, so
+there is no acuity filter.
+
+## Command envelope
+
+`POST /commands` submits any command by name, with retry safety. The resource endpoints above
+remain the primary API.
+
+```json
+{
+  "commandType": "BeginPatientTriage",
+  "commandId": "7a1c…",
+  "idempotencyKey": "tablet-17-000423",
+  "correlationId": "ward-round-9f3",
+  "expectedVersion": 1,
+  "payload": { "patientEpisodeId": "3f2b…" }
+}
+```
+
+→ `200 { "commandId", "commandType", "status": "Succeeded", "result": { "aggregateId", "version" }, "correlationId", "replayed": false }`
+
+- `commandType` is the command name without `Command`. Monitor-only commands are not accepted.
+- The same permissions, licence rules and validation apply as on the resource endpoints.
+- With an `idempotencyKey`, a retry by the same actor with the same request returns the original
+  result (`replayed: true`, header `Idempotent-Replayed: true`) without acting again. The key
+  with a different request, or by another actor, is 422 `IDEMPOTENCY_KEY_REUSED`. A command that
+  failed releases its key, so a corrected request can reuse it.
+- Errors are problem details with `commandId` and `correlationId` extensions. The correlation
+  id is also echoed in `X-Correlation-Id`.
+
+## Webhooks
+
+Site administrators subscribe HTTPS endpoints to events (permission webhooks.manage).
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/webhooks/register` | `{ "url", "eventTypes": [...], "description"? }` → 201 with `secret`, **shown once** |
+| GET | `/webhooks` | Subscriptions, without secrets |
+| GET | `/webhooks/event-types` | Subscribable event types |
+| POST | `/webhooks/{id}/rotate-secret` | New secret, shown once |
+| POST | `/webhooks/{id}/deactivate` | Stop deliveries |
+| GET | `/webhooks/{id}/deliveries?status=` | Recent deliveries and their state |
+| POST | `/webhooks/deliveries/{id}/retry` | Retry a dead-lettered delivery |
+
+Event types: `patient.arrived`, `patient.triage_started`, `patient.triage_completed`,
+`patient.moved`, `patient.discharged`, `patient.cancelled`, `escalation.raised`,
+`escalation.acknowledged`, `escalation.reassigned`, `escalation.escalated`,
+`escalation.resolved`, `escalation.closed`, `escalation.follow_up_required`,
+`escalation.follow_up_closed`.
+
+```http
+POST https://subscriber.example/betsi
+Betsi-Signature: t=1789481234,v1=5f1c…
+Betsi-Delivery-Id: 1b0e…
+Betsi-Event-Id: 88c2…
+Betsi-Event-Type: escalation.raised
+
+{ "id": "88c2…", "type": "escalation.raised", "schemaVersion": 1, "occurredAt": "…Z",
+  "tenantId": "…", "aggregateType": "Escalation", "aggregateId": "…", "aggregateVersion": 1,
+  "actorRole": "System",
+  "data": { "patientEpisodeId": "…", "responsibleRole": "Waiting-room Coordinator", "tierLevel": 1, … } }
+```
+
+**Verify every delivery**: compute HMAC-SHA256 with the secret over `"{t}.{raw body}"`, compare
+to `v1` in constant time, and reject a `t` more than five minutes from now. Deduplicate on
+`Betsi-Event-Id` — delivery is at least once.
+
+**Payloads carry no patient identifiers** — no names, dates of birth, NHS numbers or free-text
+notes. Use the episode API, with your own credentials, if you need them.
+
+Any non-2xx response or a 10-second timeout is retried with exponential backoff (30s, 1m, 2m…
+capped at an hour, with jitter); after 8 attempts the delivery is dead-lettered. Redirects are not
+followed. Outside Development, URLs must be HTTPS and must not resolve to private, loopback or
+link-local addresses — checked at registration and again at every connection.
+
+## Integrations (HL7 v2 and FHIR R4)
+
+Site administrators register a source system (permission integrations.manage):
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/integrations/sources` | `{ "name", "format": "Hl7v2" \| "FhirR4" }` → 201 with `inboundPath` and `secret`, shown once |
+| GET | `/integrations/sources` | Sources |
+| POST | `/integrations/sources/{id}/rotate-secret` | New secret |
+| POST | `/integrations/sources/{id}/deactivate` | Refuse further messages |
+| GET | `/integrations/sources/{id}/messages?status=Quarantined` | Message metadata, no bodies |
+| GET | `/integrations/messages/{id}` | One message with its quarantined body — **patient data**; permission episodes.read, audited |
+
+The source then posts each message to `POST /integrations/inbound/{tenantId}/{sourceId}` with:
+
+- `Betsi-Signature: t=…,v1=…` — as for webhooks, signed with the source's secret, within five minutes;
+- `Betsi-Message-Id` — the sender's unique id. Resending the same id is safe and returns the original outcome.
+
+| Format | Arrival | Discharge | Cancellation |
+|---|---|---|---|
+| HL7 v2.x ADT (`application/hl7-v2`) | A01, A04 | A03 | A11 |
+| FHIR R4 Encounter in a Bundle, Patient in the Bundle or contained (`application/fhir+json`) | `arrived`, `triaged`, `in-progress` | `finished` | `cancelled`, `entered-in-error` |
+
+Arrival reads name, date of birth and NHS number (HL7 PID-3 with type `NH` or an `NHS`
+authority; FHIR identifier system `https://fhir.nhs.uk/Id/nhs-number`) and links the visit
+identifier (HL7 PV1-19; FHIR `Encounter.identifier`) to the new episode, which discharge and
+cancellation then find. The same visit announced twice is one episode.
+
+A message that cannot be processed — unsupported type, missing field, unknown visit, invalid NHS
+number — is **quarantined**, not discarded: it is stored with its error for review, and still
+acknowledged (HL7 `MSA|AE`, FHIR `"status": "Quarantined"`) so the sender does not retry a
+message that will never succeed. HL7 senders get an HL7 ACK; FHIR senders get
+`202 { "messageId", "status", "episodeId", "error", "duplicate" }`.
+
+Messages act as the reserved **Integration** role, which may only register, discharge and
+cancel, and every action is audited against the source's id.
+
 ## Not yet implemented
 
-The waiting board and the dashboard UI are Phase H; the escalation board and policy endpoints
-above are the only read side so far. Authentication, authorisation and API versioning beyond the `/v1` path
-segment are Phase G. See `IMPLEMENTATION_PLAN.md`.
+Dashboard UI and real-time push are Phase H. Break-glass access, service-account scopes for
+addons, a .NET client SDK (MVP-069) and a generic REST polling adapter (MVP-067) are not built.
+See `IMPLEMENTATION_PLAN.md`.

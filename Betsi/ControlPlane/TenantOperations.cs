@@ -36,7 +36,7 @@ public sealed class SqlServerTenantSchemaMigrator : ITenantSchemaMigrator
         Guid tenantId, string connectionString, CancellationToken cancellationToken)
     {
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(tenantId, Guid.Empty, "System");
+        tenantContext.ResolveSystem(tenantId);
 
         var options = new DbContextOptionsBuilder<BetsiDbContext>()
             .UseSqlServer(connectionString, sql =>

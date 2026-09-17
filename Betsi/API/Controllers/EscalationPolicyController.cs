@@ -3,7 +3,9 @@ namespace Betsi.API.Controllers;
 using Betsi.Application.Commands;
 using Betsi.Application.Escalations;
 using Betsi.Domain.Aggregates;
+using Betsi.Security;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
@@ -32,11 +34,13 @@ public sealed class EscalationPolicyController : ControllerBase
 
     /// <summary>The revision in force, and every revision with its approval history.</summary>
     [HttpGet]
+    [Authorize(Policy = Permissions.PolicyRead)]
     [ProducesResponseType<PolicyOverview>(StatusCodes.Status200OK)]
     public Task<PolicyOverview> GetOverview(CancellationToken cancellationToken) =>
         _queries.GetPolicyOverviewAsync(cancellationToken);
 
     [HttpGet("revisions/{revision:int}")]
+    [Authorize(Policy = Permissions.PolicyRead)]
     [ProducesResponseType<PolicyRevisionView>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetRevision(int revision, CancellationToken cancellationToken) =>
@@ -49,6 +53,7 @@ public sealed class EscalationPolicyController : ControllerBase
     /// Shows how many patients waiting right now each proposed tier would apply to. Changes nothing.
     /// </summary>
     [HttpPost("preview")]
+    [Authorize(Policy = Permissions.PolicyPropose)]
     [ProducesResponseType<PolicyPreview>(StatusCodes.Status200OK)]
     public Task<PolicyPreview> Preview([FromBody] List<WaitingTimeTierInput> tiers, CancellationToken cancellationToken) =>
         _queries.PreviewAsync(

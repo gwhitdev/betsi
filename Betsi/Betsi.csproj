@@ -3,6 +3,11 @@
   <PropertyGroup>
     <RootNamespace>Betsi</RootNamespace>
     <AssemblyName>Betsi.Core</AssemblyName>
+    <!-- XML comments feed the published OpenAPI descriptions. CS1591 (undocumented public
+         members) and CS1573 (partly documented parameters) are not enforced: documentation is
+         written where it helps a caller, not for every member. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
   </PropertyGroup>
 
   <ItemGroup Label="Persistence">
@@ -22,6 +27,7 @@
 
   <ItemGroup Label="Web">
     <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
   <ItemGroup Label="Observability">

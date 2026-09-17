@@ -122,7 +122,7 @@ public class EscalationEngineTests
             var proposal = await ProposeAsync();
 
             (await ApproveAsync(proposal, Administrator, "Clinical Lead")).StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-            (await ApproveAsync(proposal, Coordinator, "Waiting-room Coordinator")).StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+            (await ApproveAsync(proposal, Coordinator, "Waiting-room Coordinator")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
             (await ApproveAsync(proposal, ClinicalLead, "Clinical Lead")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -554,7 +554,7 @@ public class EscalationEngineTests
             await using (var db = _factory.DatabaseFor(tenant))
             {
                 var context = new TenantContext();
-                context.Resolve(tenant, Guid.Empty, "System");
+                context.ResolveSystem(tenant);
                 var repository = new Betsi.Infrastructure.Persistence.AggregateRepository<PatientEpisode>(db, context);
 
                 for (var i = 0; i < WaitingPatients; i++)

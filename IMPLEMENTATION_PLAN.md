@@ -1,17 +1,32 @@
-# Betsi Patient Flow — Implementation Plan for Outstanding Work
+# Betsi Patient Flow — Implementation Plan
 
-**Created**: 2026-09-12
-**Supersedes the "Outstanding Work" sections of**: `IMPLEMENTATION_STATUS.md`, `SESSION_4_COMPLETION.md`
+**Created**: 2026-09-12 · **Last updated**: 2026-09-16
 **Scope**: everything from "code compiles" to "MVP pilot-ready"
+**Where things stand today**: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
+
+| Phase | State |
+|---|---|
+| A Foundation · B Write path · C Tests & CI | ✅ Delivered — [PR #1](https://github.com/gwhitdev/betsi/pull/1) (CI green, unmerged) |
+| D Multi-tenancy & licensing · E Escalation engine | ✅ Delivered — PR #1 |
+| G API, authentication, integration | ✅ Delivered — [PR #2](https://github.com/gwhitdev/betsi/pull/2), stacked on #1 (CI green) |
+| F Clinical safety features | ⛔ Not started — gated on a named clinical safety officer |
+| H UI & dashboards | ⏳ Not started — read APIs exist; needs a real-time transport decision |
+| I Deployment & operations | ⏳ Not started — next phase that needs no clinical sign-off |
+
+Phase sections below record what was delivered against what was planned. Estimates are the
+original ones, kept so future estimates can be calibrated against them.
 
 ---
 
-## 1. Corrected baseline — what actually works today
+## 1. Baseline when this plan was written (2026-09-12)
 
-`IMPLEMENTATION_STATUS.md` reports Session 4 as "Core Infrastructure Complete ✅". That is
-not accurate against the code on disk. `dotnet build` succeeds (0 errors, 9 warnings), but
-**the application has never been run against a database and cannot currently start a
-request that touches persistence.** The infrastructure layer is unreachable dead code.
+*Historical. Every defect listed here is fixed and covered by tests; the section stays because
+it explains why phases A–C exist and what the tests are defending against.*
+
+`IMPLEMENTATION_STATUS.md` reported Session 4 as "Core Infrastructure Complete ✅". That was
+not accurate against the code on disk. `dotnet build` succeeded (0 errors, 9 warnings), but
+**the application had never been run against a database and could not start a request that
+touched persistence.** The infrastructure layer was unreachable dead code.
 
 ### What is genuinely done
 | Area | State | Evidence |
@@ -79,28 +94,35 @@ a patient-data confidentiality risk.
   of the CS7022 entry-point warning. There is no test project.
 - **D-11 — Zero tests exist.** No test project, no test file, no assertion has ever run.
 
-### Open decisions that gate the plan
-| # | Decision | Recommendation |
+### Decisions that gated the plan
+| # | Decision | Outcome |
 |---|---|---|
-| 1 | SQL Server vs PostgreSQL (flagged "**YES** blocker" in status doc) | **SQL Server.** Every artefact already assumes it (`GETUTCDATE()`, `nvarchar(max)`, `[bracket]` index filters). Switching costs ~2 days of rework for no MVP benefit. Revisit for hosting economics before Phase 1. |
-| 2 | Single project vs split solution | **Split minimally**: extract `Betsi.Tests`; keep `Domain`/`Application`/`Infrastructure`/`API` as folders in the one host project for the MVP. A full 4-project split is churn that buys little while the team is one or two people. |
-| 3 | Who owns clinical sign-off | Unassigned. All of Phase F is unsafe to ship without a named clinical safety officer (DCB0129). Needs a person, not a ticket. |
+| 1 | SQL Server vs PostgreSQL (flagged "**YES** blocker" in status doc) | ✅ **SQL Server**, as recommended: every artefact already assumed it (`GETUTCDATE()`, `nvarchar(max)`, `[bracket]` index filters). Revisit for hosting economics before Phase 1. |
+| 2 | Single project vs split solution | ✅ **Split minimally**: `Betsi.Tests` and `tools/Betsi.LicenseTool` are separate; the host project keeps `Domain`/`Application`/`Infrastructure`/`API`/`ControlPlane`/`Licensing`/`Security`/`Integrations` as folders. |
+| 3 | Who owns clinical sign-off | ⛔ **Still unassigned.** All of Phase F is unsafe to ship without a named clinical safety officer (DCB0129). Needs a person, not a ticket. It also owns three decisions already made in code: the licence gating classification, the supervisory role list, and the role-to-permission matrix. |
+| 4 | Identity provider for the pilot site | ⛔ **Open.** Phase G works with any OIDC provider; a site needs one chosen, with the tenant claim issued by it. |
+| 5 | Real-time transport for the dashboards | ⛔ **Open.** Needed before Phase H. The board APIs are live queries, so polling is viable for a pilot. |
 
 ---
 
 ## 2. Plan
 
-Nine phases. **A, B and C are strictly sequential and must land before any feature work** —
-they turn a codebase that compiles into a codebase that runs and is verifiable. D onwards
-map onto the existing MVP issue numbering.
+Nine phases. **A, B and C were strictly sequential and had to land before any feature work** —
+they turned a codebase that compiled into one that runs and is verifiable. D onwards map onto
+the existing MVP issue numbering.
 
-Estimates are engineer-days for one developer familiar with .NET/EF/DDD.
+Estimates are engineer-days for one developer familiar with .NET/EF/DDD. Each delivered phase
+records what actually shipped, including where it differed from the plan.
 
 ---
 
-### Phase A — Make the foundation executable  ·  ~5 days  ·  **blocks everything**
+### Phase A — Make the foundation executable  ·  ~5 days  ·  ✅ delivered
 
 Goal: `dotnet run`, migrations apply to a real database, one request round-trips end to end.
+
+**Delivered as planned** (A-1 … A-7), verified live against SQL Server in Docker on 2026-09-14.
+D-1 … D-11 are all fixed; `DependencyInjectionTests`, `TenantIsolationTests` and the SQL Server
+migration suite hold each line.
 
 - **A-1 · Fix the package manifest** (0.5d) — D-10.
   EF Core 9.0.0 → 10.x. Drop `MediatR.Extensions.Microsoft.DependencyInjection` (MediatR 12
@@ -144,7 +166,7 @@ Goal: `dotnet run`, migrations apply to a real database, one request round-trips
 
 ---
 
-### Phase B — Complete the write path  ·  ~6 days  ·  MVP-006, MVP-010
+### Phase B — Complete the write path  ·  ~6 days  ·  ✅ delivered  ·  MVP-006, MVP-010
 
 - **B-1 · The nine missing command handlers** (2.5d).
   `CompletePatientTriage`, `BeginPatientTreatment`, `DischargePatient`, `CancelPatient`,
@@ -169,11 +191,12 @@ Goal: `dotnet run`, migrations apply to a real database, one request round-trips
   write-only table.
 
 **Exit criteria**: all 8 (soon ~14) endpoints return correct status codes; every command
-writes an audit row; outbox drains.
+writes an audit row; outbox drains. **Met.** No `TransactionBehaviour` was needed: the
+repository already commits aggregate, events and outbox in one `SaveChangesAsync`.
 
 ---
 
-### Phase C — Testing and CI  ·  ~6 days  ·  MVP-100 pulled forward
+### Phase C — Testing and CI  ·  ~6 days  ·  🔄 all but the coverage gate  ·  MVP-100 pulled forward
 
 Deliberately placed **before** feature work. The project has 3,149 lines of untested code and
 a status doc that mistook "compiles" for "works"; that failure mode does not self-correct.
@@ -194,22 +217,37 @@ a status doc that mistook "compiles" for "works"; that failure mode does not sel
 **Exit criteria**: green CI on every PR; ≥70% line coverage on Domain and Application;
 migration-drift and vulnerable-package checks enforced.
 
+**Met except the coverage gate and branch protection.** CI runs build (warnings as errors),
+tests, migration drift for both contexts, and the vulnerable-package check, green on both PRs.
+Outstanding: a coverage threshold in CI, and branch protection on `main`.
+
 ---
 
-### Phase D — Multi-tenancy & licensing  ·  ~5 days  ·  MVP-007, 008, 009
+### Phase D — Multi-tenancy & licensing  ·  ~5 days  ·  ✅ delivered  ·  MVP-007, 008, 009
 Tenant registry and provisioning workflow; per-tenant migration runner (apply schema across N
 databases); offline licence key validator with signed payload, grace period and fail-safe
 behaviour; tenant onboarding runbook. A-3 delivers the request-path half of MVP-007; this
 phase delivers the operational half.
 
-### Phase E — Escalation engine  ·  ~6 days  ·  MVP-020–025
+**Delivered**, with two decisions worth recording: the registry lives in its own control-plane
+database and stores server profiles rather than credentials; and operator actions are a CLI on
+the service binary, not an HTTP API, because there was no authentication until Phase G.
+Runbook: [`docs/runbooks/tenant-operations.md`](docs/runbooks/tenant-operations.md).
+**Not built**: backup, restore, tenant export and destruction (Phase I).
+
+### Phase E — Escalation engine  ·  ~6 days  ·  ✅ delivered  ·  MVP-020–025
 Configurable thresholds per site (4h/6h/8h); background evaluator generating escalations
 automatically; manual-follow-up exception workflow for missed acknowledgement deadlines;
 escalation read model and visibility dashboard API; full status-transition audit trail. This
 is the single most direct answer to the ED inspection findings — it is the reason the product
 exists, and it should be the first *feature* phase.
 
-### Phase F — Clinical safety features  ·  ~10 days  ·  MVP-030–045
+**Delivered** as the escalation board and audit-trail **APIs**; the dashboard UI is Phase H.
+Policy has no default: a site with no approved revision gets no automatic escalation and the
+board says so. Runbook:
+[`docs/runbooks/escalation-policy.md`](docs/runbooks/escalation-policy.md).
+
+### Phase F — Clinical safety features  ·  ~10 days  ·  ⛔ not started  ·  MVP-030–045
 Age-based routing; paediatric vital-sign ranges; safeguarding flag aggregate and escalation;
 trained-staff assignment; unaccompanied-child alerts; structured observations (SBAR/NEWS);
 pain assessment incl. FACES/FLACC; manual deterioration flagging.
@@ -217,57 +255,75 @@ pain assessment incl. FACES/FLACC; manual deterioration flagging.
 DCB0129 hazard log. Shipping paediatric triage logic without clinical sign-off is not
 acceptable regardless of schedule pressure.
 
-### Phase G — API, auth, integration  ·  ~8 days  ·  MVP-060–070
-OAuth2/OIDC (NHS CIS2 where applicable); role-based authorisation on every endpoint — note
-**there is currently no authentication of any kind**; API versioning; webhook delivery off the
-outbox; HL7/FHIR adapter; OpenAPI publication.
+### Phase G — API, auth, integration  ·  ~8 days  ·  ✅ delivered  ·  MVP-060–070
+OAuth2/OIDC (NHS CIS2 where applicable); role-based authorisation on every endpoint; API
+versioning; webhook delivery off the outbox; HL7/FHIR adapter; OpenAPI publication.
 
-### Phase H — UI & dashboards  ·  ~15 days  ·  MVP-080–095
-Query/read-model side first (there is none today — the system is write-only), then waiting
-room board, escalation dashboard, triage scoreboard, discharge tracking, workspace editor,
-site configuration UI. Real-time transport (SignalR) decision needed before start.
+**Delivered** provider-agnostically: any OIDC provider by configuration rather than a CIS2-
+specific integration, with acting-role selection as CIS2 expects. Also added, because the
+permission model made them cheap and the integration work needed them: episode and waiting-board
+queries (MVP-062) and the idempotent command envelope (MVP-061).
+**Not built**: MVP-067 (generic REST polling adapter) and MVP-069 (.NET client SDK), both P2;
+observation messages, which need Phase F's observation model. Runbook:
+[`docs/runbooks/identity-and-integrations.md`](docs/runbooks/identity-and-integrations.md).
 
-### Phase I — Deployment & operations  ·  ~7 days  ·  MVP-102–115
+### Phase H — UI & dashboards  ·  ~15 days  ·  ⏳ not started  ·  MVP-080–095
+The read side now exists as APIs — escalation board, episode detail, waiting board, policy
+views — so this phase is the user interface itself: waiting room board, escalation dashboard,
+triage scoreboard, discharge tracking, workspace editor, site configuration UI, WCAG 2.2 AA,
+Welsh language. Real-time transport (SignalR versus polling) decision needed before start; the
+board APIs are live queries, so polling is viable for a pilot.
+
+### Phase I — Deployment & operations  ·  ~7 days  ·  ⏳ not started  ·  MVP-102–115
 CD pipeline, staging/production environments, monitoring and alerting, backup/restore drill,
-operator runbooks, DSPT evidence pack.
+DSPT evidence pack. Operator runbooks for tenants, escalation policy and integrations are
+written. Carries three items the earlier phases deliberately left: a shared Data Protection key
+ring (webhook and integration secrets), a secret store for database credentials, and tenant
+backup, export and destruction.
 
 ---
 
 ## 3. Sequencing
 
 ```
-A ──▶ B ──▶ C ──┬──▶ D ──┬──▶ E ──▶ F ──▶ H
-                │        │
-                └──▶ G ──┘        (G can run parallel to E once C lands)
-                                   I trails E/G
+A ──▶ B ──▶ C ──┬──▶ D ──▶ E ──┐
+                │              ├──▶ H
+                └──▶ G ────────┘
+                     F ──▶ H        (F gated on clinical governance)
+                     I trails E/G
 ```
 
-**Critical path to a pilot-ready MVP**: A → B → C → D → E → G → H → I ≈ **58 engineer-days**,
-plus Phase F (10d) gated on clinical governance. With one developer that is roughly 12–14
-weeks, not the "30 days" in `.github/project.md`. That estimate should be revised with
-stakeholders before Phase 0 sign-off.
+Delivered: A, B, C (bar the coverage gate), D, E, G — 46 of the estimated 58 engineer-days on
+the critical path, in six working sessions.
+
+**Remaining to a pilot-ready MVP**: H (~15d) and I (~7d), plus F (~10d) once clinical
+governance allows. I and H are independent; F blocks nothing else but is required before a
+paediatric-capable pilot.
 
 ---
 
 ## 4. Immediate next actions
 
-1. Confirm open decisions #1 (SQL Server) and #2 (test project split) — both gate A-1.
-2. Correct `IMPLEMENTATION_STATUS.md` so it reflects the baseline in §1. The current version
-   would lead a stakeholder to believe the core is finished.
-3. Start A-1 → A-7 as a single PR series; do not open feature work in parallel.
-4. Name a clinical safety officer (blocks Phase F, long lead time — start now).
-5. Commit the currently untracked work (`Betsi/API/`, `Betsi/Application/`,
-   `Betsi/Infrastructure/`, `appsettings.json`) before refactoring, so Phase A is reviewable
-   as a diff.
+1. **Review and merge [PR #1](https://github.com/gwhitdev/betsi/pull/1), then retarget and merge
+   [PR #2](https://github.com/gwhitdev/betsi/pull/2).** Both are green; nothing is on `main` yet.
+2. **Close Phase C**: coverage threshold in CI, branch protection on `main`.
+3. **Name a clinical safety officer** and start the DCB0129 hazard log. This has blocked Phase F
+   since 2026-09-12 and has the longest lead time of anything outstanding. The hazard log also
+   needs to record three decisions already made in code: which operations a licence may gate,
+   the supervisory role list, and the role-to-permission matrix.
+4. **Choose the identity provider** for the pilot site and how it issues the tenant claim.
+5. **Decide the real-time transport** for Phase H (SignalR or polling).
+6. **Start Phase I** — it needs no clinical sign-off, and it owns the secret and key storage the
+   deployed system needs before it holds real patient data.
 
 ---
 
-## 5. Recommended hygiene changes
+## 5. Hygiene changes — adopted
 
-- Retire the per-session narrative docs (`SESSION_4_COMPLETION.md`, `COMMIT_CHECKLIST.md`,
-  `DELIVERABLES_CHECKLIST.md`, `CORE_IMPLEMENTATION_GUIDE.md`, `API_QUICK_REFERENCE.md`,
-  `README_PHASE_0_READY.md`). Six overlapping status documents at the repo root, all
-  hand-maintained and now all partly wrong, cost more than they inform. Keep `design/spec.md`,
-  `.github/ISSUES.md`, this plan, and one short `IMPLEMENTATION_STATUS.md`.
-- Adopt "definition of done = merged with tests passing in CI", not "compiles". Every ✅ in
-  the current status doc that was awarded for a successful build is the root cause of §1.
+- ✅ The six per-session narrative documents were retired in PR #1. What remains is
+  `design/spec.md`, `.github/ISSUES.md`, this plan, one `IMPLEMENTATION_STATUS.md`, and
+  `docs/` for architecture, API and runbooks.
+- ✅ "Definition of done = merged with tests passing in CI", not "compiles". Every ✅ in the old
+  status document that was awarded for a successful build is the root cause of §1. Status
+  entries now name the check that was run and when.
+- Keep claims falsifiable: a status line says what was verified, against what, on what date.

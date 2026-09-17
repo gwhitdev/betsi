@@ -1,6 +1,10 @@
 # GitHub Project Setup Guide
 
-**Status**: Ready to Create Project  
+**Status**: Not yet created — issue tracking currently lives in [ISSUES.md](ISSUES.md) and
+[project.md](project.md), and delivery tracking in
+[IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md). Follow this guide when the work moves
+onto a GitHub Project; the issue bodies in ISSUES.md are written to be imported as they are, and
+project.md records which are already delivered.  
 **Platform**: GitHub Projects (new table format)  
 **Repository**: gwhitdev/betsi
 

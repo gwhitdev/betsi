@@ -166,7 +166,7 @@ public sealed class WaitingTimeMonitor : IWaitingTimeMonitor
         await using var scope = _scopes.CreateAsyncScope();
 
         scope.ServiceProvider.GetRequiredService<TenantContext>()
-            .Resolve(_tenantContext.TenantId, Guid.Empty, "System");
+            .ResolveSystem(_tenantContext.TenantId);
 
         try
         {
@@ -248,7 +248,7 @@ public sealed class WaitingTimeMonitorService : BackgroundService
         try
         {
             await using var scope = _scopes.CreateAsyncScope();
-            scope.ServiceProvider.GetRequiredService<TenantContext>().Resolve(tenantId, Guid.Empty, "System");
+            scope.ServiceProvider.GetRequiredService<TenantContext>().ResolveSystem(tenantId);
 
             var result = await scope.ServiceProvider.GetRequiredService<IWaitingTimeMonitor>()
                 .EvaluateAsync(_time.GetUtcNow().UtcDateTime, cancellationToken);

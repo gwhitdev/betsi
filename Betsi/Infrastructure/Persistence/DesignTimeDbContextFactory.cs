@@ -23,7 +23,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Bet
             .Options;
 
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(Guid.Parse("00000000-0000-0000-0000-0000000000ff"), Guid.Empty, "DesignTime");
+        tenantContext.ResolveSystem(Guid.Parse("00000000-0000-0000-0000-0000000000ff"));
 
         return new BetsiDbContext(options, tenantContext);
     }

@@ -40,8 +40,9 @@ public sealed class AuditBehaviour<TRequest, TResponse> : IPipelineBehavior<TReq
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Only state-changing commands are audited. Auditing queries would swamp the trail
-        // and is a Phase G concern once read endpoints carry patient data.
+        // Only state-changing commands are audited here. Reads that carry patient data are
+        // audited at the endpoint instead (AuditReadAttribute), so the trail records which
+        // records were looked at without a row for every list query.
         if (request is not ICommand)
             return await next();
 

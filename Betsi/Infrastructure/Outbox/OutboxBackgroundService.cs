@@ -64,7 +64,7 @@ public sealed class OutboxBackgroundService : BackgroundService
             await using var scope = _services.CreateAsyncScope();
 
             scope.ServiceProvider.GetRequiredService<TenantContext>()
-                .Resolve(tenantId, Guid.Empty, "System");
+                .ResolveSystem(tenantId);
 
             var processor = scope.ServiceProvider.GetRequiredService<IOutboxProcessor>();
             var result = await processor.DrainAsync(tenantId, cancellationToken);

@@ -227,6 +227,45 @@ public sealed class SqlServerMigrationTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task Waiting_board_pages_are_complete_and_ordered_on_sql_server()
+    {
+        Assert.SkipWhen(_skipReason is not null, _skipReason ?? string.Empty);
+
+        await using (var migrationContext = NewContext())
+            await migrationContext.Database.MigrateAsync(Ct);
+
+        // Several patients with the same arrival time force the id tie-breaker, whose ordering
+        // on SQL Server (uniqueidentifier byte order) differs from .NET's.
+        var arrivedAt = DateTime.UtcNow.AddHours(-2);
+        await using (var context = NewContext())
+        {
+            for (var i = 0; i < 12; i++)
+            {
+                var episode = PatientEpisode.CreateNew(_tenantId, "Board", $"Patient{i}", new DateTime(1990, 1, 1), null, _actorId, "Nurse");
+                context.PatientEpisodes.Add(episode);
+                context.Entry(episode).Property(e => e.ArrivedAt).CurrentValue = arrivedAt;
+            }
+
+            await context.SaveChangesAsync(Ct);
+        }
+
+        var seen = new List<Guid>();
+        string? cursor = null;
+        do
+        {
+            await using var context = NewContext();
+            var page = await new Betsi.Application.Queries.EpisodeQueries(context, TimeProvider.System)
+                .GetWaitingBoardAsync(new Betsi.Application.Queries.WaitingBoardFilter(Cursor: cursor, PageSize: 5), Ct);
+            seen.AddRange(page.Items.Select(i => i.EpisodeId));
+            cursor = page.NextCursor;
+        }
+        while (cursor is not null);
+
+        seen.Count.ShouldBe(12);
+        seen.ShouldBeUnique();
+    }
+
     private ITenantContext TenantContextFor()
     {
         var tenantContext = new TenantContext();

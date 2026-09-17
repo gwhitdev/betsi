@@ -1,7 +1,8 @@
 namespace Betsi.Infrastructure.Tenancy;
 
 using Betsi.ControlPlane;
-using Microsoft.AspNetCore.Mvc;
+using Betsi.API.Problems;
+using Betsi.Security;
 using System.Security.Claims;
 
 /// <summary>
@@ -11,10 +12,10 @@ using System.Security.Claims;
 /// Fails closed. A request that does not name a tenant this instance serves is rejected
 /// before it can reach a handler, rather than being allowed through with an empty tenant.
 ///
-/// Tenant and actor are read from claims when the request is authenticated, falling back to
-/// headers otherwise. The header path exists so the API is usable before Phase G adds
-/// OAuth2/OIDC, and <b>must be disabled in any environment holding real patient data</b> —
-/// see <see cref="TenantResolutionOptions.AllowHeaderFallback"/>.
+/// Tenant, actor and acting role are read from the authenticated principal: a validated OIDC
+/// token, a signed inbound integration message, or — in Development only — the
+/// <c>X-Betsi-*</c> headers, which <see cref="DevelopmentHeaderAuthenticationHandler"/> turns
+/// into the same claims. Nothing here reads identity from a raw header.
 /// </remarks>
 public sealed class TenantResolutionMiddleware
 {
@@ -22,20 +23,23 @@ public sealed class TenantResolutionMiddleware
     public const string ActorHeaderName = "X-Betsi-Actor";
     public const string ActorRoleHeaderName = "X-Betsi-Actor-Role";
 
-    public const string TenantClaimType = "betsi:tenant_id";
-    public const string ActorRoleClaimType = ClaimTypes.Role;
+    /// <summary>Selects one of the token's roles when it carries several and no acting-role claim.</summary>
+    public const string ActingRoleHeaderName = "X-Betsi-Acting-Role";
 
     private readonly RequestDelegate _next;
     private readonly TenantResolutionOptions _options;
+    private readonly BetsiClaimOptions _claims;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
 
     public TenantResolutionMiddleware(
         RequestDelegate next,
         TenantResolutionOptions options,
+        BetsiClaimOptions claims,
         ILogger<TenantResolutionMiddleware> logger)
     {
         _next = next;
         _options = options;
+        _claims = claims;
         _logger = logger;
     }
 
@@ -44,20 +48,40 @@ public sealed class TenantResolutionMiddleware
         TenantContext tenantContext,
         ITenantRegistry registry)
     {
-        if (IsExempt(httpContext.Request.Path))
+        var user = httpContext.User;
+
+        // Unauthenticated requests pass through unresolved; the authorisation fallback policy
+        // turns them into a 401. Exempt paths (health, API documentation) need no tenant.
+        if (IsExempt(httpContext.Request.Path) || user.Identity?.IsAuthenticated != true)
         {
             await _next(httpContext);
             return;
         }
 
-        if (!TryReadTenantId(httpContext, out var tenantId))
+        if (!Guid.TryParse(user.FindFirst(_claims.Tenant)?.Value, out var tenantId))
         {
-            await WriteProblemAsync(
-                httpContext,
-                StatusCodes.Status400BadRequest,
+            await RefuseAsync(httpContext, StatusCodes.Status400BadRequest, ProblemCodes.TenantNotSpecified,
                 "Tenant not specified",
-                $"The request did not carry a tenant. Supply a '{TenantClaimType}' claim" +
-                (_options.AllowHeaderFallback ? $" or a '{TenantHeaderName}' header." : "."));
+                $"The credentials did not carry a '{_claims.Tenant}' claim" +
+                (_options.AllowHeaderFallback ? $" and no '{TenantHeaderName}' header was sent." : "."));
+            return;
+        }
+
+        // A tenant named in a header must agree with the one in the token (MVP-065): a client
+        // that believes it is talking to one hospital must not silently act in another.
+        var headerTenant = httpContext.Request.Headers[TenantHeaderName].ToString();
+        if (!string.IsNullOrEmpty(headerTenant) &&
+            (!Guid.TryParse(headerTenant, out var named) || named != tenantId))
+        {
+            _logger.LogWarning("Refused request whose tenant header does not match its credentials");
+            await RefuseAsync(httpContext, StatusCodes.Status403Forbidden, ProblemCodes.TenantMismatch,
+                "Tenant mismatch", "The tenant named in the request does not match the tenant in the credentials.");
+            return;
+        }
+
+        if (!TryResolveActingRole(httpContext, user, out var actingRole, out var refusal))
+        {
+            await RefuseAsync(httpContext, StatusCodes.Status403Forbidden, refusal.Code, refusal.Title, refusal.Detail);
             return;
         }
 
@@ -67,24 +91,16 @@ public sealed class TenantResolutionMiddleware
         if (!registry.TryGet(tenantId, out var tenant))
         {
             _logger.LogWarning("Rejected request for unregistered tenant {TenantId}", tenantId);
-
-            await WriteProblemAsync(
-                httpContext,
-                StatusCodes.Status404NotFound,
-                "Unknown tenant",
-                "The requested tenant is not served by this instance.");
+            await RefuseAsync(httpContext, StatusCodes.Status404NotFound, ProblemCodes.UnknownTenant,
+                "Unknown tenant", "The requested tenant is not served by this instance.");
             return;
         }
 
         if (tenant.Availability == TenantAvailability.Suspended)
         {
             _logger.LogWarning("Rejected request for suspended tenant {TenantId}", tenantId);
-
-            await WriteProblemAsync(
-                httpContext,
-                StatusCodes.Status403Forbidden,
-                "Tenant suspended",
-                "This tenant has been suspended. Contact your system administrator.");
+            await RefuseAsync(httpContext, StatusCodes.Status403Forbidden, ProblemCodes.TenantSuspended,
+                "Tenant suspended", "This tenant has been suspended. Contact your system administrator.");
             return;
         }
 
@@ -95,78 +111,84 @@ public sealed class TenantResolutionMiddleware
                 tenantId, tenant.UnavailableReason);
 
             httpContext.Response.Headers.RetryAfter = "60";
-            await WriteProblemAsync(
-                httpContext,
-                StatusCodes.Status503ServiceUnavailable,
-                "Tenant unavailable",
-                "This tenant is temporarily unavailable. Try again shortly.");
+            await RefuseAsync(httpContext, StatusCodes.Status503ServiceUnavailable, ProblemCodes.TenantUnavailable,
+                "Tenant unavailable", "This tenant is temporarily unavailable. Try again shortly.");
             return;
         }
 
-        var (actorId, actorRole) = ReadActor(httpContext);
-        tenantContext.Resolve(tenantId, actorId, actorRole);
+        var actorId = AuthenticationSetup.ActorIdFor(
+            user.FindFirst(_claims.Subject)?.Value, user.FindFirst("iss")?.Value);
+
+        tenantContext.Resolve(tenantId, actorId, actingRole);
 
         using (_logger.BeginScope(new Dictionary<string, object>
         {
             ["TenantId"] = tenantId,
             ["ActorId"] = actorId,
-            ["ActorRole"] = actorRole
+            ["ActorRole"] = actingRole
         }))
         {
             await _next(httpContext);
         }
     }
 
+    private bool TryResolveActingRole(
+        HttpContext httpContext, ClaimsPrincipal user, out string actingRole, out (string Code, string Title, string Detail) refusal)
+    {
+        refusal = default;
+
+        var roles = user.FindAll(_claims.Role).Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).ToList();
+        var selected = user.FindFirst(_claims.ActingRole)?.Value;
+        if (string.IsNullOrWhiteSpace(selected))
+            selected = httpContext.Request.Headers[ActingRoleHeaderName].ToString();
+
+        if (!string.IsNullOrWhiteSpace(selected))
+        {
+            actingRole = roles.FirstOrDefault(r => string.Equals(r, selected, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+            if (actingRole.Length == 0)
+            {
+                refusal = (ProblemCodes.Forbidden, "Role not held", $"The credentials do not hold the role '{selected}'.");
+                return false;
+            }
+        }
+        else if (roles.Count == 1)
+        {
+            actingRole = roles[0];
+        }
+        else if (roles.Count == 0)
+        {
+            // Authenticated but with no role: allowed through so the permission check refuses
+            // it (and audits the refusal) rather than failing here without a record.
+            actingRole = "Unknown";
+        }
+        else
+        {
+            actingRole = string.Empty;
+            refusal = (ProblemCodes.ActingRoleRequired, "Acting role required",
+                $"The credentials carry several roles. Select one with the '{_claims.ActingRole}' claim or the '{ActingRoleHeaderName}' header.");
+            return false;
+        }
+
+        // The platform's own roles cannot be claimed. Integration is granted only to a message
+        // authenticated by its signature, never to a token or header that says so.
+        if (RoleMatrix.IsReserved(actingRole) &&
+            !(string.Equals(actingRole, RoleMatrix.IntegrationRole, StringComparison.OrdinalIgnoreCase) &&
+              user.Identity?.AuthenticationType == BetsiAuthenticationSchemes.InboundSignature))
+        {
+            _logger.LogWarning("Refused credentials claiming reserved role {Role}", actingRole);
+            refusal = (ProblemCodes.ReservedRole, "Reserved role", $"The role '{actingRole}' cannot be claimed.");
+            return false;
+        }
+
+        return true;
+    }
+
     private bool IsExempt(PathString path) =>
         _options.ExemptPathPrefixes.Any(prefix =>
             path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
 
-    private bool TryReadTenantId(HttpContext httpContext, out Guid tenantId)
-    {
-        var claim = httpContext.User.FindFirst(TenantClaimType)?.Value;
-
-        if (Guid.TryParse(claim, out tenantId))
-            return true;
-
-        if (!_options.AllowHeaderFallback)
-            return false;
-
-        var header = httpContext.Request.Headers[TenantHeaderName].FirstOrDefault();
-        return Guid.TryParse(header, out tenantId);
-    }
-
-    private (Guid ActorId, string ActorRole) ReadActor(HttpContext httpContext)
-    {
-        var subject = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var role = httpContext.User.FindFirst(ActorRoleClaimType)?.Value;
-
-        if (_options.AllowHeaderFallback)
-        {
-            subject ??= httpContext.Request.Headers[ActorHeaderName].FirstOrDefault();
-            role ??= httpContext.Request.Headers[ActorRoleHeaderName].FirstOrDefault();
-        }
-
-        // An unidentified actor is recorded as Guid.Empty rather than rejected: the audit
-        // trail keeps the row either way, and Phase G makes authentication mandatory.
-        return (Guid.TryParse(subject, out var actorId) ? actorId : Guid.Empty,
-                string.IsNullOrWhiteSpace(role) ? "Unknown" : role);
-    }
-
-    private static Task WriteProblemAsync(
-        HttpContext httpContext, int statusCode, string title, string detail)
-    {
-        httpContext.Response.StatusCode = statusCode;
-        return httpContext.Response.WriteAsJsonAsync(
-            new ProblemDetails
-            {
-                Status = statusCode,
-                Title = title,
-                Detail = detail,
-                Instance = httpContext.Request.Path
-            },
-            options: null,
-            contentType: "application/problem+json");
-    }
+    private static Task RefuseAsync(HttpContext httpContext, int status, string code, string title, string detail) =>
+        ProblemCodes.WriteAsync(httpContext, ProblemCodes.Create(status, code, title, detail));
 }
 
 /// <summary>

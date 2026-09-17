@@ -127,9 +127,21 @@ public class TenantIsolationTests
     }
 
     [Fact]
-    public async Task A_request_with_no_tenant_is_refused()
+    public async Task A_request_with_no_credentials_is_unauthenticated()
     {
         var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/patients/register", APatientNamed("NoCredentials"), Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Authenticated_credentials_with_no_tenant_are_refused()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TenantResolutionMiddleware.ActorRoleHeaderName, "Nurse");
 
         var response = await client.PostAsJsonAsync(
             "/api/v1/patients/register", APatientNamed("NoTenant"), Ct);
