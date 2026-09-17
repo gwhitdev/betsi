@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Betsi.slnx
+
+      - name: Build
+        # Warnings are errors (see Directory.Build.props), which covers the package-hygiene
+        # rules NU1608/NU1902/NU1903 as well as compiler warnings.
+        run: dotnet build Betsi.slnx --configuration Release --no-restore
+
+      - name: Test
+        # The SQL Server suite uses Testcontainers; the GitHub runner has a Docker daemon,
+        # so it runs here even though it skips on a workstation without one.
+        run: dotnet test Betsi.slnx --configuration Release --no-build
+
+  schema-drift:
+    name: Migrations match the model
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore
+        # dotnet-ef builds the project to read the model, which needs restored packages.
+        run: dotnet restore Betsi/Betsi.csproj
+
+      - name: Check for un-migrated model changes
+        # The first migration in this repository was hand-written and had already drifted
+        # from the model. This makes that impossible to repeat, for the tenant schema and the
+        # control-plane schema alike.
+        run: |
+          dotnet dotnet-ef migrations has-pending-model-changes --project Betsi/Betsi.csproj --context BetsiDbContext
+          dotnet dotnet-ef migrations has-pending-model-changes --project Betsi/Betsi.csproj --context ControlPlaneDbContext
+
+  vulnerable-packages:
+    name: No vulnerable or deprecated packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Betsi.slnx
+
+      - name: Fail on vulnerable packages
+        run: |
+          set -o pipefail
+          output=$(dotnet list Betsi.slnx package --vulnerable --include-transitive)
+          echo "$output"
+          if echo "$output" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable packages detected."
+            exit 1
+          fi
+
+      - name: Report deprecated packages
+        continue-on-error: true
+        run: dotnet list Betsi.slnx package --deprecated

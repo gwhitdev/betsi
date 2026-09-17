@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Licence signing keys. Private keys must never be committed; public keys are safe to share.
+*.private.pem

@@ -1,0 +1,32 @@
+# Local development dependencies for Betsi Patient Flow.
+#
+#   docker compose up -d
+#   dotnet run --project Betsi
+#
+# The application creates and migrates each tenant database named in
+# appsettings.Development.json on startup, so no manual database setup is needed.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: betsi-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Betsi_Dev_Password1"
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - betsi-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      # The application fails fast if it cannot migrate, so wait for a real login rather
+      # than just an open port.
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  betsi-sqlserver-data:

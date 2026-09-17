@@ -144,7 +144,7 @@ public class PatientEpisode : AggregateRoot
     public void BeginTriage(Guid actorId, string actorRole)
     {
         if (State != PatientState.Waiting)
-            throw new InvalidOperationException($"Cannot begin triage when patient is in state {State}");
+            throw new DomainRuleViolationException($"Cannot begin triage when patient is in state {State}");
 
         State = PatientState.InTriage;
         TriageStartedAt = DateTime.UtcNow;
@@ -162,7 +162,7 @@ public class PatientEpisode : AggregateRoot
     public void CompleteTriage(Guid actorId, string actorRole)
     {
         if (State != PatientState.InTriage)
-            throw new InvalidOperationException($"Cannot complete triage when patient is in state {State}");
+            throw new DomainRuleViolationException($"Cannot complete triage when patient is in state {State}");
 
         State = PatientState.AwaitingTreatment;
 
@@ -179,7 +179,7 @@ public class PatientEpisode : AggregateRoot
     public void BeginTreatment(Guid locationId, Guid actorId, string actorRole)
     {
         if (State != PatientState.AwaitingTreatment && State != PatientState.InTriage)
-            throw new InvalidOperationException($"Cannot begin treatment when patient is in state {State}");
+            throw new DomainRuleViolationException($"Cannot begin treatment when patient is in state {State}");
 
         State = PatientState.InTreatment;
         LocationId = locationId;
@@ -199,7 +199,7 @@ public class PatientEpisode : AggregateRoot
     public void Discharge(Guid actorId, string actorRole, string? dischargeNotes = null)
     {
         if (State == PatientState.Discharged || State == PatientState.Cancelled)
-            throw new InvalidOperationException($"Cannot discharge patient in state {State}");
+            throw new DomainRuleViolationException($"Cannot discharge patient in state {State}");
 
         State = PatientState.Discharged;
         EndedAt = DateTime.UtcNow;
@@ -218,7 +218,7 @@ public class PatientEpisode : AggregateRoot
     public void Cancel(Guid actorId, string actorRole, string? reason = null)
     {
         if (State == PatientState.Discharged || State == PatientState.Cancelled)
-            throw new InvalidOperationException($"Cannot cancel patient in state {State}");
+            throw new DomainRuleViolationException($"Cannot cancel patient in state {State}");
 
         State = PatientState.Cancelled;
         EndedAt = DateTime.UtcNow;

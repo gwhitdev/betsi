@@ -1,0 +1,49 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Persistence">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup Label="Application">
+    <!--
+      MediatR is pinned to 12.5.0 deliberately: 13.0.0 and later are distributed under a
+      commercial licence. 12.5.0 is the last Apache-2.0 release. Do not bump without a
+      licensing decision. MediatR 12 registers its own DI extensions, so the separate
+      MediatR.Extensions.Microsoft.DependencyInjection package is not required.
+    -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Web">
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability">
+    <PackageVersion Include="Serilog" Version="4.4.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
+    <!--
+      Shouldly rather than FluentAssertions: FluentAssertions 8.x moved to a commercial
+      licence. Shouldly is BSD-3-Clause.
+    -->
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.3.1" />
+  </ItemGroup>
+
+</Project>
