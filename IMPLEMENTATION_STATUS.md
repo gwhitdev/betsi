@@ -165,6 +165,35 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ---
 
+## Phase H — Waiting board and escalation dashboard (MVP-080, 081, 083)
+
+| Item | Status | Notes |
+|---|---|---|
+| H-1 Blazor Server host and authentication | ✅ | The interface is served by the existing host, not a second application: one deployment, one image, one set of secrets. Cookie plus authorization-code sign-in; the tokens stay on the server, so an injected script cannot read one. `UI:Enabled` is off by default — an instance that only receives HL7 messages has no reason to expose a sign-in page |
+| Keycloak as the development provider | ✅ | `docker compose up -d keycloak`, realm in `tools/keycloak/betsi-realm.json`. Seven fixture accounts covering what headers cannot model: a second tenant, a site administrator, and accounts holding two roles with and without a selection |
+| H-2 Live updates | ✅ | SignalR, in the command pipeline rather than off the outbox, so an escalation reaches a screen in the second it is raised rather than at the next drain. A signal, not a payload: each board refetches what it is entitled to see, so there is one authorisation path. Groups are per tenant, joined from the connection's own verified claim |
+| H-3 Escalation dashboard | ✅ | Awaiting acknowledgement, active, and missed deadlines, with acknowledge and resolve from the screen. The no-policy banner is unmissable: a board that raises nothing automatically is indistinguishable from a quiet department |
+| H-4 Waiting room board | ✅ | Who is waiting, how long, and against which tier, updating live |
+| H-5 Accessibility and Welsh | 🔄 | Built in from the first screen: skip link, focus moved to the heading on navigation, visible focus, 44px targets, semantic tables, every state in words as well as colour, reduced-motion. Every string in a resource file with a Welsh sibling. **The Welsh needs review by a Welsh speaker, and no axe or screen-reader pass has been run** — `docs/runbooks/welsh-language.md` |
+| H-6 Episode detail and policy editor | ⏳ | Not built. Both have working APIs; they were the declared first thing to cut |
+| Verified live | ✅ | 2026-09-17 against Keycloak and Docker SQL Server: a nurse signs in through the real OIDC flow and sees her own department's board; the other tenant's nurse sees none of those patients; a site administrator is refused both boards in words; an account with two roles and no selection is refused; the hub refuses an unauthenticated subscriber; the board renders in Welsh |
+
+**Found while building it, and fixed**
+
+- **A Blazor page does not run the API's authorisation pipeline.** A circuit has no HTTP request,
+  so `RequirePermission` applies the same role matrix in the component tree. Without it a Site
+  Administrator could have reached the waiting board and read patient names — the one role the
+  matrix exists to keep away from them.
+- The session now resolves during prerender as well as in the circuit, so the first HTML a
+  browser receives is the real board rather than an error.
+
+**Needs a decision**
+
+- **Whether a ward display may run unattended.** The interface signs a person in for a fixed
+  twelve hours with no sliding renewal, which suits a clinician at a workstation and not a board
+  on a wall. A waiting-room display showing no patient-identifying data is a different threat
+  model and needs its own decision before one is mounted.
+
 ## Phase I — Deployment & operations (MVP-105, 108, 109, 110, 113, 114)
 
 | Item | Status | Notes |
@@ -228,7 +257,7 @@ The CD pipeline stays written and skipped until there is somewhere to deploy to.
 
 | Phase | Scope | Gate |
 |---|---|---|
-| H | Waiting board and escalation dashboard (MVP-080–095) | None. Stack and transport decided (§Open decisions 5 and 6); read APIs already delivered |
+| H | Remaining screens: episode detail, policy editor, triage scoreboard, discharge tracking (MVP-082, 090–095) | None. The two headline boards are delivered |
 | F | Paediatric & clinical safety features (MVP-030–045) | **DCB0129 hazard log, kept provisionally by the developer until a clinical safety officer exists** |
 
 ## Open decisions

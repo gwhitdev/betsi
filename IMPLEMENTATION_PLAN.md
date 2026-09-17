@@ -270,7 +270,7 @@ queries (MVP-062) and the idempotent command envelope (MVP-061).
 observation messages, which need Phase F's observation model. Runbook:
 [`docs/runbooks/identity-and-integrations.md`](docs/runbooks/identity-and-integrations.md).
 
-### Phase H — UI & dashboards  ·  ~15 days  ·  ⏳ next  ·  MVP-080–095
+### Phase H — UI & dashboards  ·  ~15 days  ·  🔄 two headline screens delivered  ·  MVP-080–095
 The read side already exists as APIs — escalation board, episode detail, waiting board, policy
 views — so this phase is the user interface itself.
 
@@ -306,6 +306,11 @@ views — so this phase is the user interface itself.
 **Exit criteria**: both boards live-update within a second of a change without polling; every
 action goes through an audited command; keyboard-only operation and axe-clean on both screens;
 both render in Welsh; a Site Administrator sees no patient data.
+
+**Met, except the two that need something this repository cannot hold**: axe in CI needs a
+headless browser in the pipeline, and the Welsh needs a Welsh speaker. Both are recorded in
+`docs/runbooks/welsh-language.md` rather than quietly assumed. H-6 is not built: it was the
+declared first thing to cut, and its APIs work meanwhile.
 
 ### Phase I — Deployment & operations  ·  ~7 days  ·  ✅ delivered  ·  MVP-105, 108, 109, 110, 113, 114
 CD pipeline, staging/production environments, monitoring and alerting, backup/restore drill,

@@ -11,7 +11,7 @@ acknowledged, and no auditable record of either.
 - **Current state**: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
 - **Architecture**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - **API**: [`docs/API.md`](docs/API.md) · [versioning](docs/API-VERSIONING.md) · [OpenAPI](docs/openapi/v1.json)
-- **Runbooks**: [deployment](docs/runbooks/deployment.md) · [backup and restore](docs/runbooks/backup-and-restore.md) · [observability and incidents](docs/runbooks/observability-and-incidents.md) · [tenant operations](docs/runbooks/tenant-operations.md) · [escalation policy](docs/runbooks/escalation-policy.md) · [identity and integrations](docs/runbooks/identity-and-integrations.md)
+- **Runbooks**: [Welsh and accessibility](docs/runbooks/welsh-language.md) · [deployment](docs/runbooks/deployment.md) · [backup and restore](docs/runbooks/backup-and-restore.md) · [observability and incidents](docs/runbooks/observability-and-incidents.md) · [tenant operations](docs/runbooks/tenant-operations.md) · [escalation policy](docs/runbooks/escalation-policy.md) · [identity and integrations](docs/runbooks/identity-and-integrations.md)
 - **Compliance**: [DSPT evidence pack](docs/DSPT-EVIDENCE.md)
 
 ## Running it
@@ -23,8 +23,17 @@ docker compose up -d          # SQL Server on localhost:1433
 dotnet run --project Betsi    # creates the control plane, provisions and licenses the dev tenants
 ```
 
-Then open <http://localhost:5080/swagger>. Health is at `/health`, with `/health/live` and
-`/health/ready` for an orchestrator and a load balancer respectively.
+Then open <http://localhost:5080> for the web interface, or <http://localhost:5080/swagger> for
+the API. Health is at `/health`, with `/health/live` and `/health/ready` for an orchestrator and
+a load balancer respectively.
+
+The interface signs in against Keycloak, which `docker compose up -d` starts alongside SQL
+Server. Development accounts (password `betsi`): `nurse`, `charge`, `lead`, `admin` (a site
+administrator, who can see no patient data), `wrexham` (the other tenant), `tworoles` (holds two
+roles and must choose one) and `chosen`. They are fixtures — see
+[`tools/keycloak/betsi-realm.json`](tools/keycloak/betsi-realm.json). After changing that file,
+recreate the container (`docker compose rm -sf keycloak && docker compose up -d keycloak`):
+Keycloak skips importing a realm that already exists.
 
 To run the containerised service instead of `dotnet run`, create the two local secret files
 described in [`secrets/README.md`](secrets/README.md) and use `docker compose --profile app up -d --build`.
@@ -97,6 +106,7 @@ two contexts, so pass `--context BetsiDbContext` or `--context ControlPlaneDbCon
 | `Betsi/API` | Controllers and the RFC 9457 problem-details handler. |
 | `Betsi/Security` | Authentication schemes, role matrix and permissions, read auditing. |
 | `Betsi/Integrations` | Webhooks, signatures, HL7 v2 and FHIR R4 inbound messages. |
+| `Betsi/UI` | Blazor Server interface: boards, sign-in, the live-update hub, Welsh and English resources. |
 | `tests/Betsi.Tests` | Domain, infrastructure, control-plane, licensing and API tests. |
 | `tools/Betsi.LicenseTool` | Licence key generation and signing. Never deployed. |
 | `tools/deploy.sh`, `tools/coverage-gate.py` | Deployment with a readiness gate and rollback; the CI coverage threshold. |
