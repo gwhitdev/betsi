@@ -1,6 +1,6 @@
 # Betsi Patient Flow — Implementation Status
 
-**Last updated**: 2026-09-16
+**Last updated**: 2026-09-17
 **Plan**: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 **Definition of done**: merged with tests passing in CI. "It compiles" is not a status.
 
@@ -26,7 +26,7 @@ repository setting rather than code.
 | `dotnet dotnet-ef migrations has-pending-model-changes` | ✅ No drift, both contexts (repo-local tool) |
 | CI on pull requests | ✅ Green on PR #1 and PR #2: build, tests, migration drift (both contexts), vulnerable packages. Phase I adds the coverage gate; not yet run on a PR |
 | Coverage gate (≥70% Domain + Application) | ✅ Enforced in CI by `tools/coverage-gate.py`. Actual: Domain 98.1%, Application 89.3% |
-| Branch protection on `main` | ❌ Not configured — a repository setting, not code |
+| Branch protection on `main` | ❌ Not configured — a repository setting, not code. Planned as status checks only; see "What to do next" |
 
 ---
 
@@ -200,23 +200,35 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ## What to do next
 
-1. **Review and merge PR #1**, then retarget PR #2, then open and merge a PR for
-   `feature/phase-i`. Nothing is on `main`.
-2. **Turn on branch protection on `main`** — the last Phase C item. Require the four CI checks
-   and at least one review.
-3. **Name a clinical safety officer** and open the DCB0129 hazard log — the longest lead time of
-   anything outstanding, and it blocks Phase F entirely.
-4. **Stand up staging and production hosts** and set `DEPLOY_ENABLED` on each GitHub
-   environment. The pipeline is written and deploys nowhere until then.
-5. **Create the two certificates** before real patient data arrives: backup encryption and the
-   Data Protection key ring.
+Agreed 2026-09-17; the full reasoning is in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §4.
+Everything below is verifiable on one developer's machine, which is where this system lives.
+
+1. **Merge the stack**: PR #1, then retarget and merge PR #2, then a PR for `feature/phase-i`.
+   `main` currently holds none of seven phases' work.
+2. **Branch protection on `main`**: the four CI checks, and deliberately *not* a required
+   review — a single-developer repository cannot satisfy one, and a rule that is bypassed every
+   time is worse than no rule. Add it when there is a second developer.
+3. **Phase H** — Blazor Server, SignalR from the first screen, escalation dashboard then waiting
+   room board, WCAG 2.2 AA and Welsh throughout, with Keycloak in compose so authentication is
+   exercised by a person rather than only by tests.
+4. **Make the Phase I claims true locally**: run containerised through the `app` profile,
+   generate self-signed certificates so the backup and key-ring warnings go away, stand up an
+   OTLP collector and Grafana with the four documented panels, and run the restore drill for
+   real, recording the time against the 30-minute objective.
+5. **The loose testing ends**: MVP-104 migration rollback tests, and a load test against the
+   p95/p99 budgets, which are asserted and unmeasured.
+6. **Phase F**, against a hazard log kept provisionally (open decision 3).
+
+Deliberately not scheduled: staging and production hosts, a paging tool, a penetration test and
+training materials. Each needs infrastructure, a third party, or a UI that does not exist yet.
+The CD pipeline stays written and skipped until there is somewhere to deploy to.
 
 ## Next phases
 
 | Phase | Scope | Gate |
 |---|---|---|
-| F | Paediatric & clinical safety features (MVP-030–045) | **Named clinical safety officer + DCB0129 hazard log** |
-| H | Waiting board and dashboards (MVP-080–095) | Real-time transport decision; read APIs already delivered |
+| H | Waiting board and escalation dashboard (MVP-080–095) | None. Stack and transport decided (§Open decisions 5 and 6); read APIs already delivered |
+| F | Paediatric & clinical safety features (MVP-030–045) | **DCB0129 hazard log, kept provisionally by the developer until a clinical safety officer exists** |
 
 ## Open decisions
 
@@ -224,6 +236,9 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 |---|---|---|
 | 1 | SQL Server vs PostgreSQL | ✅ SQL Server adopted in code; revisit hosting cost before Phase 1 |
 | 2 | Project split | ✅ Host project, `tests/Betsi.Tests`, `tools/Betsi.LicenseTool` |
-| 3 | Clinical safety officer | ⛔ **Unassigned — blocks Phase F.** Also owns three decisions already made in code: licence gating classification, supervisory role list, role-to-permission matrix |
-| 4 | Identity provider for the pilot site | ⛔ Open — any OIDC provider works; a site needs one chosen and the tenant claim issued |
-| 5 | Real-time transport for dashboards | ⛔ Open — needed before Phase H; polling is viable because the board APIs are live queries |
+| 3 | Clinical safety officer | 🔄 **Unassigned.** No longer blocks Phase F: the hazard log is kept by the developer and every clinical decision in it is marked *provisional — requires sign-off before any real patient data*. That includes the three already made in code: licence gating classification, supervisory role list, role-to-permission matrix. A real deployment replaces the author, not the log |
+| 4 | Identity provider | ✅ **Keycloak** in `docker compose` for development, issuing the tenant and acting-role claims properly. A pilot site substitutes its own provider by configuration — the service was built provider-agnostic in Phase G and this changes no code |
+| 5 | Real-time transport for dashboards | ✅ **SignalR**, from the first screen. The escalation engine notifies subscribed clients when it raises a tier, rather than every board polling. A backplane is needed once there are two instances; single-instance until then, recorded as a known limit |
+| 6 | UI stack | ✅ **Blazor Server.** One language and one build; the circuit is already a websocket, so SignalR is native rather than an addition; authentication reuses the server-side OIDC setup, so no access token is handled in a browser. The cost is a server connection per client and reconnection handling on a ward tablet |
+| 7 | Phase H scope | ✅ **Escalation dashboard and waiting room board first**, built properly, rather than six screens thinly. Episode detail and the policy editor follow; both have working APIs meanwhile |
+| 8 | Accessibility and Welsh | ✅ **WCAG 2.2 AA and localisation from the first screen.** Retrofitting either is close to a rewrite, and in a Welsh NHS system both are obligations rather than polish |
