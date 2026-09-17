@@ -1,0 +1,36 @@
+@* Renders its content only if the signed-in role holds the permission, and says so plainly if
+   it does not.
+
+   The API enforces permissions in its authorisation pipeline, against the tenant context of a
+   request. A Blazor page has no request, so the same matrix is applied here, on the same acting
+   role. This is not the only defence: every command still goes through the audited pipeline and
+   would be refused there too. It is what stops the refusal arriving as an error after someone
+   has read a screen of patient data they should never have been shown. *@
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+@if (!Session.IsResolved)
+{
+    <div class="notice notice--error" role="alert">
+        <h1>@T["UnavailableTitle"]</h1>
+        <p>@Session.UnavailableReason</p>
+    </div>
+}
+else if (Session.Identity.Can(Permission))
+{
+    @ChildContent
+}
+else
+{
+    <div class="notice notice--warning" role="alert">
+        <h1>@T["NotPermitted"]</h1>
+        <p>@T["NotPermittedDetail", Session.Identity.ActingRole]</p>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Permission { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override Task OnInitializedAsync() => Session.EnsureAsync();
+}

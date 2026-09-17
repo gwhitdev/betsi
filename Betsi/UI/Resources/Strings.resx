@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="SkipToContent" xml:space="preserve">
+    <value>Skip to content</value>
+  </data>
+  <data name="MainNavigation" xml:space="preserve">
+    <value>Main navigation</value>
+  </data>
+  <data name="NavEscalations" xml:space="preserve">
+    <value>Escalations</value>
+  </data>
+  <data name="NavWaiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="UnavailableTitle" xml:space="preserve">
+    <value>This department is unavailable</value>
+  </data>
+  <data name="LiveConnected" xml:space="preserve">
+    <value>Updating live</value>
+  </data>
+  <data name="LiveReconnecting" xml:space="preserve">
+    <value>Reconnecting — times may be out of date</value>
+  </data>
+  <data name="LastUpdated" xml:space="preserve">
+    <value>Last updated {0}</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="EscalationsTitle" xml:space="preserve">
+    <value>Escalation dashboard</value>
+  </data>
+  <data name="EscalationsSummary" xml:space="preserve">
+    <value>Who is waiting past threshold, and who owes a response.</value>
+  </data>
+  <data name="AwaitingAcknowledgement" xml:space="preserve">
+    <value>Awaiting acknowledgement</value>
+  </data>
+  <data name="ActiveEscalations" xml:space="preserve">
+    <value>Acknowledged and active</value>
+  </data>
+  <data name="FollowUpExceptions" xml:space="preserve">
+    <value>Missed deadlines</value>
+  </data>
+  <data name="NoPolicyTitle" xml:space="preserve">
+    <value>No escalation policy is in force</value>
+  </data>
+  <data name="NoPolicyBody" xml:space="preserve">
+    <value>Waiting times are not being escalated automatically. A supervisory user must approve a policy revision.</value>
+  </data>
+  <data name="PolicyInForce" xml:space="preserve">
+    <value>Policy revision {0}, in force since {1}</value>
+  </data>
+  <data name="NothingAwaiting" xml:space="preserve">
+    <value>Nothing is awaiting acknowledgement.</value>
+  </data>
+  <data name="NothingActive" xml:space="preserve">
+    <value>No escalations are active.</value>
+  </data>
+  <data name="NoFollowUps" xml:space="preserve">
+    <value>No deadlines have been missed.</value>
+  </data>
+  <data name="Acknowledge" xml:space="preserve">
+    <value>Acknowledge</value>
+  </data>
+  <data name="Resolve" xml:space="preserve">
+    <value>Resolve</value>
+  </data>
+  <data name="ColumnPatient" xml:space="preserve">
+    <value>Patient</value>
+  </data>
+  <data name="ColumnTier" xml:space="preserve">
+    <value>Tier</value>
+  </data>
+  <data name="ColumnWaited" xml:space="preserve">
+    <value>Waited</value>
+  </data>
+  <data name="ColumnResponsible" xml:space="preserve">
+    <value>Responsible</value>
+  </data>
+  <data name="ColumnDue" xml:space="preserve">
+    <value>Response due</value>
+  </data>
+  <data name="ColumnRaised" xml:space="preserve">
+    <value>Raised</value>
+  </data>
+  <data name="ColumnState" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="ColumnOwner" xml:space="preserve">
+    <value>Owner</value>
+  </data>
+  <data name="Overdue" xml:space="preserve">
+    <value>Overdue</value>
+  </data>
+  <data name="DueIn" xml:space="preserve">
+    <value>Due in {0}</value>
+  </data>
+  <data name="WaitingTitle" xml:space="preserve">
+    <value>Waiting room board</value>
+  </data>
+  <data name="WaitingSummary" xml:space="preserve">
+    <value>Everyone waiting, longest first.</value>
+  </data>
+  <data name="NobodyWaiting" xml:space="preserve">
+    <value>Nobody is waiting.</value>
+  </data>
+  <data name="ColumnArrived" xml:space="preserve">
+    <value>Arrived</value>
+  </data>
+  <data name="ColumnLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="WaitingCount" xml:space="preserve">
+    <value>{0} waiting</value>
+  </data>
+  <data name="LongestWait" xml:space="preserve">
+    <value>Longest wait {0}</value>
+  </data>
+  <data name="ShowMore" xml:space="preserve">
+    <value>Show more</value>
+  </data>
+  <data name="Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="HoursMinutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>That action could not be completed: {0}</value>
+  </data>
+  <data name="NotPermitted" xml:space="preserve">
+    <value>Your role does not permit that action.</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="NotPermittedDetail" xml:space="preserve">
+    <value>Your role ({0}) does not include permission to see this page.</value>
+  </data>
+</root>

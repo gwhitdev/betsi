@@ -1,0 +1,31 @@
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> T
+
+@* A form, not a link: changing language sets a cookie, and a GET that changes state is
+   something a prefetching browser will do on its own. *@
+<form method="post" action="@UiRoutes.Language" class="language-picker">
+    <AntiforgeryToken />
+    <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+    <label class="visually-hidden" for="language">@T["Language"]</label>
+    <select id="language" name="culture" onchange="this.form.submit()">
+        @foreach (var culture in UiModule.SupportedCultures)
+        {
+            <option value="@culture" selected="@(culture == CultureInfo.CurrentUICulture.Name)">
+                @Name(culture)
+            </option>
+        }
+    </select>
+    @* Works without JavaScript too, for the same reason the boards do. *@
+    <noscript><button type="submit">@T["Change"]</button></noscript>
+</form>
+
+@code {
+    private string ReturnUrl => "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+
+    // Each language named in itself, which is how a Welsh speaker finds Welsh in the list.
+    private static string Name(string culture) => culture switch
+    {
+        "cy-GB" => "Cymraeg",
+        _ => "English"
+    };
+}

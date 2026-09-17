@@ -1,0 +1,21 @@
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                <SignInPrompt />
+            </NotAuthorized>
+            <Authorizing>
+                <p>Checking your access…</p>
+            </Authorizing>
+        </AuthorizeRouteView>
+        @* Moves keyboard focus to the page heading on every navigation, so a screen-reader or
+           keyboard user is not returned to the top of the navigation each time (WCAG 2.4.3). *@
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <h1>Page not found</h1>
+            <p>That address does not exist. <a href="@UiRoutes.Dashboard">Return to the dashboard</a>.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

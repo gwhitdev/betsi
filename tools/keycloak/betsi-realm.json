@@ -1,0 +1,286 @@
+{
+  "realm": "betsi",
+  "enabled": true,
+  "displayName": "Betsi Patient Flow (development)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginTheme": "keycloak",
+  "accessTokenLifespan": 3600,
+  "clients": [
+    {
+      "clientId": "betsi-ui",
+      "name": "Betsi web interface",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "betsi-ui-development-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:5080/*",
+        "http://127.0.0.1:8080/*",
+        "http://localhost:5080/*",
+        "http://localhost:8080/*",
+        "https://localhost:7080/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:5080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5080",
+        "http://localhost:8080",
+        "https://localhost:7080"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://127.0.0.1:5080/*##http://127.0.0.1:8080/*##http://localhost:5080/*##http://localhost:8080/*##https://localhost:7080/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "betsi tenant",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "betsi_tenant_id",
+            "claim.name": "betsi:tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "betsi roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "betsi_roles",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "betsi acting role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "betsi_acting_role",
+            "claim.name": "betsi:acting_role",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "betsi-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "betsi-api",
+      "name": "Betsi API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "betsi-api-development-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {}
+    }
+  ],
+  "users": [
+    {
+      "username": "nurse",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Nia",
+      "lastName": "Roberts",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Nurse"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "nurse@betsi.example.test"
+    },
+    {
+      "username": "charge",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Owain",
+      "lastName": "Davies",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Nurse in Charge"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "charge@betsi.example.test"
+    },
+    {
+      "username": "lead",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Rhian",
+      "lastName": "Morgan",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Clinical Lead"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "lead@betsi.example.test"
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sion",
+      "lastName": "Evans",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Site Administrator"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "admin@betsi.example.test"
+    },
+    {
+      "username": "wrexham",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Elin",
+      "lastName": "Hughes",
+      "attributes": {
+        "betsi_tenant_id": [
+          "22222222-2222-2222-2222-222222222222"
+        ],
+        "betsi_roles": [
+          "Nurse"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "wrexham@betsi.example.test"
+    },
+    {
+      "username": "tworoles",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Gareth",
+      "lastName": "Lloyd",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Nurse",
+          "Clinical Lead"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "tworoles@betsi.example.test"
+    },
+    {
+      "username": "chosen",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bethan",
+      "lastName": "Price",
+      "attributes": {
+        "betsi_tenant_id": [
+          "11111111-1111-1111-1111-111111111111"
+        ],
+        "betsi_roles": [
+          "Nurse",
+          "Clinical Lead"
+        ],
+        "betsi_acting_role": [
+          "Clinical Lead"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "betsi",
+          "temporary": false
+        }
+      ],
+      "email": "chosen@betsi.example.test"
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+@page "/"
+@page "/escalations"
+@using Betsi.Application.Commands
+@using Betsi.Application.Escalations
+@using Betsi.Security
+@using MediatR
+@attribute [Authorize]
+@inject UiScopeRunner Scope
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["EscalationsTitle"]</PageTitle>
+
+<RequirePermission Permission="@Permissions.EscalationsRead">
+
+<h1>@T["EscalationsTitle"]</h1>
+<p class="lede">@T["EscalationsSummary"]</p>
+
+<LiveBoard OnChanged="LoadAsync" UpdatedAt="@(_board?.GeneratedAt ?? DateTime.UtcNow)" />
+
+@if (_error is not null)
+{
+    <p class="notice notice--error" role="alert">@_error</p>
+}
+
+@if (_board is null)
+{
+    <p>@T["Loading"]</p>
+}
+else
+{
+    @* The policy banner is first and unmissable. A board with no policy raises nothing
+       automatically, and a quiet board is indistinguishable from a quiet department. *@
+    @if (_board.Policy.Status != "InForce")
+    {
+        <div class="notice notice--warning" role="alert">
+            <h2>@T["NoPolicyTitle"]</h2>
+            <p>@T["NoPolicyBody"]</p>
+        </div>
+    }
+    else
+    {
+        <p class="policy-status">
+            @T["PolicyInForce", _board.Policy.Revision!, Local(_board.Policy.EffectiveFrom!.Value)]
+        </p>
+    }
+
+    <section aria-labelledby="awaiting-heading">
+        <h2 id="awaiting-heading">
+            @T["AwaitingAcknowledgement"] <span class="count">@_board.AwaitingAcknowledgement.Count</span>
+        </h2>
+
+        @if (_board.AwaitingAcknowledgement.Count == 0)
+        {
+            <p>@T["NothingAwaiting"]</p>
+        }
+        else
+        {
+            <table class="board">
+                <caption class="visually-hidden">@T["AwaitingAcknowledgement"]</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@T["ColumnPatient"]</th>
+                        <th scope="col">@T["ColumnTier"]</th>
+                        <th scope="col">@T["ColumnWaited"]</th>
+                        <th scope="col">@T["ColumnResponsible"]</th>
+                        <th scope="col">@T["ColumnDue"]</th>
+                        <th scope="col"><span class="visually-hidden">@T["Acknowledge"]</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var card in _board.AwaitingAcknowledgement)
+                    {
+                        <tr class="@(card.AcknowledgementOverdue ? "row--overdue" : null)">
+                            <td>@PatientName(card)</td>
+                            <td>@(card.TierLevel?.ToString() ?? "—")</td>
+                            <td>@Duration(card.WaitedMinutesWhenRaised ?? card.MinutesSinceRaised)</td>
+                            <td>@card.ResponsibleRole</td>
+                            <td>
+                                @if (card.AcknowledgementOverdue)
+                                {
+                                    @* Conveyed in words as well as colour: a red row alone fails
+                                       WCAG 1.4.1 and is invisible to a colour-blind clinician. *@
+                                    <strong class="overdue">@T["Overdue"]</strong>
+                                }
+                                else if (card.AcknowledgementDueAt is { } due)
+                                {
+                                    @T["DueIn", Duration((int)Math.Max(0, (due - DateTime.UtcNow).TotalMinutes))]
+                                }
+                            </td>
+                            <td>
+                                @if (Session.Identity.Can(Permissions.EscalationsRespond))
+                                {
+                                    <button type="button" class="button"
+                                            disabled="@_busy"
+                                            @onclick="() => AcknowledgeAsync(card)">
+                                        @T["Acknowledge"]
+                                        <span class="visually-hidden">— @PatientName(card)</span>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section aria-labelledby="active-heading">
+        <h2 id="active-heading">@T["ActiveEscalations"] <span class="count">@_board.Active.Count</span></h2>
+
+        @if (_board.Active.Count == 0)
+        {
+            <p>@T["NothingActive"]</p>
+        }
+        else
+        {
+            <table class="board">
+                <caption class="visually-hidden">@T["ActiveEscalations"]</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@T["ColumnPatient"]</th>
+                        <th scope="col">@T["ColumnTier"]</th>
+                        <th scope="col">@T["ColumnResponsible"]</th>
+                        <th scope="col">@T["ColumnRaised"]</th>
+                        <th scope="col"><span class="visually-hidden">@T["Resolve"]</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var card in _board.Active)
+                    {
+                        <tr>
+                            <td>@PatientName(card)</td>
+                            <td>@(card.TierLevel?.ToString() ?? "—")</td>
+                            <td>@card.ResponsibleRole</td>
+                            <td>@Duration(card.MinutesSinceRaised)</td>
+                            <td>
+                                @if (Session.Identity.Can(Permissions.EscalationsRespond))
+                                {
+                                    <button type="button" class="button"
+                                            disabled="@_busy"
+                                            @onclick="() => ResolveAsync(card)">
+                                        @T["Resolve"]
+                                        <span class="visually-hidden">— @PatientName(card)</span>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section aria-labelledby="followups-heading">
+        <h2 id="followups-heading">@T["FollowUpExceptions"] <span class="count">@_board.FollowUpExceptions.Count</span></h2>
+
+        @if (_board.FollowUpExceptions.Count == 0)
+        {
+            <p>@T["NoFollowUps"]</p>
+        }
+        else
+        {
+            <table class="board">
+                <caption class="visually-hidden">@T["FollowUpExceptions"]</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@T["ColumnPatient"]</th>
+                        <th scope="col">@T["ColumnOwner"]</th>
+                        <th scope="col">@T["ColumnDue"]</th>
+                        <th scope="col">@T["ColumnRaised"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exception in _board.FollowUpExceptions)
+                    {
+                        <tr class="row--overdue">
+                            <td>@(exception.Patient?.Name ?? "—")</td>
+                            <td>@exception.OwnerRole</td>
+                            <td>@Local(exception.MissedDeadline)</td>
+                            <td>@Duration(exception.MinutesOpen)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+</RequirePermission>
+
+@code {
+    private EscalationBoard? _board;
+    private string? _error;
+    private bool _busy;
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureAsync();
+
+        // The guard renders a refusal instead of this page, but a callback from a live update
+        // could still arrive: a board that cannot be read must not be fetched.
+        if (!Session.IsResolved || !Session.Identity.Can(Permissions.EscalationsRead))
+            return;
+
+        try
+        {
+            _board = await Scope.RunAsync(services =>
+                services.GetRequiredService<EscalationQueries>().GetBoardAsync(historyDays: 1, CancellationToken.None));
+            _error = null;
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+    }
+
+    private Task AcknowledgeAsync(EscalationCard card) =>
+        SendAsync(new AcknowledgeEscalationCommand { EscalationId = card.Id });
+
+    private Task ResolveAsync(EscalationCard card) =>
+        SendAsync(new ResolveEscalationCommand { EscalationId = card.Id });
+
+    /// <summary>
+    /// Every action goes through the same audited, validated command the API exposes. The UI
+    /// has no privileged path of its own: permissions, licence rules and the audit trail apply
+    /// exactly as they would to an integration.
+    /// </summary>
+    private async Task SendAsync(ICommand command)
+    {
+        _busy = true;
+        try
+        {
+            await Scope.RunAsync(services => services.GetRequiredService<ISender>().Send(command));
+            _error = null;
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        // Refetched rather than patched in memory: the command may have raised a follow-up
+        // exception or changed another row, and the board is cheap to re-read.
+        await LoadAsync();
+    }
+
+    private string PatientName(EscalationCard card) => card.Patient?.Name ?? "—";
+
+    private static string Local(DateTime utc) => utc.ToLocalTime().ToString("HH:mm");
+
+    private string Duration(int minutes) =>
+        minutes < 60 ? T["Minutes", minutes] : T["HoursMinutes", minutes / 60, minutes % 60];
+}

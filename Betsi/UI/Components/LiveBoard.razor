@@ -1,0 +1,88 @@
+@* Subscribes to the tenant's board hub and calls back when anything changes.
+
+   A component rather than code in each page, so both boards behave identically when the
+   connection drops: they say so. A board that silently stops updating is worse than one that
+   was never live, because a clinician reads a two-hour-old waiting time as current. *@
+@implements IAsyncDisposable
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> T
+
+<p class="live-status @(Connected ? "live-status--on" : "live-status--off")"
+   role="status" aria-live="polite">
+    @(Connected ? T["LiveConnected"] : T["LiveReconnecting"])
+    <span class="live-status__time">@T["LastUpdated", UpdatedAt.ToLocalTime().ToString("HH:mm:ss")]</span>
+    <button type="button" class="button button--quiet" @onclick="RefreshAsync">@T["Refresh"]</button>
+</p>
+
+@code {
+    /// <summary>Called when the server says this department changed, and on the first render.</summary>
+    [Parameter, EditorRequired] public EventCallback OnChanged { get; set; }
+
+    /// <summary>When the data currently on screen was fetched.</summary>
+    [Parameter] public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    private HubConnection? _connection;
+    private bool Connected => _connection?.State == HubConnectionState.Connected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Prerendering runs inside the HTTP request that asked for the page: there is no browser
+        // to push to yet, and no circuit to live in. The data is still loaded, so the
+        // prerendered HTML is a real board rather than a spinner; only the subscription waits.
+        await NotifyAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive || _connection is not null)
+            return;
+
+        _connection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri(UiRoutes.Hub), options =>
+            {
+                // The circuit's own cookie: the hub is authenticated as the signed-in user, and
+                // joins only that user's tenant group.
+                options.UseDefaultCredentials = true;
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _connection.On<string>(BoardHub.ChangedMethod, async _ => await InvokeAsync(NotifyAsync));
+
+        // Reconnecting means what is on screen may already be wrong, so the banner appears
+        // immediately and the data is refetched the moment the connection returns.
+        _connection.Reconnecting += _ => InvokeAsync(StateHasChanged);
+        _connection.Reconnected += async _ =>
+        {
+            await InvokeAsync(StateHasChanged);
+            await InvokeAsync(NotifyAsync);
+        };
+
+        try
+        {
+            await _connection.StartAsync();
+        }
+        catch (Exception)
+        {
+            // A board that cannot subscribe still shows data; it just says it is not live.
+        }
+
+        // Refetched once connected: anything that changed between the prerender and the
+        // subscription would otherwise sit on screen unnoticed until the next change.
+        await NotifyAsync();
+    }
+
+    private Task RefreshAsync() => NotifyAsync();
+
+    private async Task NotifyAsync()
+    {
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_connection is not null)
+            await _connection.DisposeAsync();
+    }
+}

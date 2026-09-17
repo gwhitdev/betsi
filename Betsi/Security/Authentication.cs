@@ -56,12 +56,42 @@ public sealed class JwtOptions
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Authority) || SigningKeys.Count > 0;
 }
 
+/// <summary>
+/// Interactive sign-in for the web interface (Phase H).
+/// </summary>
+/// <remarks>
+/// A browser gets a cookie, not a token. The authorization-code flow runs server-side and the
+/// access token never reaches the browser, so an injected script cannot read one — which for a
+/// system holding patient data is the difference between a configuration and a threat model.
+/// </remarks>
+public sealed class InteractiveSignInOptions
+{
+    /// <summary>OIDC authority for interactive sign-in. Usually the same provider the API trusts.</summary>
+    public string? Authority { get; set; }
+
+    public string ClientId { get; set; } = string.Empty;
+
+    /// <summary>Confidential-client secret. A <c>secret:</c> reference in a deployment.</summary>
+    public string? ClientSecret { get; set; }
+
+    public bool RequireHttpsMetadata { get; set; } = true;
+
+    /// <summary>Scopes beyond openid/profile. The tenant and role claims usually need one.</summary>
+    public List<string> Scopes { get; set; } = [];
+
+    /// <summary>How long a signed-in session lasts before the user must authenticate again.</summary>
+    public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(12);
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(Authority) && !string.IsNullOrWhiteSpace(ClientId);
+}
+
 public sealed class BetsiAuthenticationOptions
 {
     public const string SectionName = "Authentication";
 
     public JwtOptions Jwt { get; set; } = new();
     public BetsiClaimOptions Claims { get; set; } = new();
+    public InteractiveSignInOptions Interactive { get; set; } = new();
 }
 
 public static class BetsiAuthenticationSchemes
@@ -70,6 +100,12 @@ public static class BetsiAuthenticationSchemes
     public const string Bearer = JwtBearerDefaults.AuthenticationScheme;
     public const string DevelopmentHeaders = "DevelopmentHeaders";
     public const string InboundSignature = "InboundSignature";
+
+    /// <summary>The web interface's sign-in cookie.</summary>
+    public const string Cookie = "BetsiCookie";
+
+    /// <summary>The OIDC challenge that issues that cookie.</summary>
+    public const string Oidc = "BetsiOidc";
 }
 
 public static class AuthenticationSetup
@@ -79,6 +115,7 @@ public static class AuthenticationSetup
         TenantResolutionOptions tenantResolution)
     {
         var options = Bind(configuration);
+        var interactive = options.Interactive;
 
         // Resolved lazily from the final configuration, so providers added after registration
         // (a test host, a secret store) are honoured. Startup validation below uses what is
@@ -115,6 +152,12 @@ public static class AuthenticationSetup
                     if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                         return BetsiAuthenticationSchemes.Bearer;
 
+                    // Anything that is not the API is the web interface, which authenticates
+                    // with a cookie. Checked after the bearer header so a token always wins:
+                    // a request that presents one is asking to be judged on it.
+                    if (interactive.IsConfigured && !UI.UiRoutes.IsApiPath(context.Request.Path))
+                        return BetsiAuthenticationSchemes.Cookie;
+
                     return tenantResolution.AllowHeaderFallback
                         ? BetsiAuthenticationSchemes.DevelopmentHeaders
                         : BetsiAuthenticationSchemes.Bearer;
@@ -126,6 +169,9 @@ public static class AuthenticationSetup
 
         services.AddOptions<JwtBearerOptions>(BetsiAuthenticationSchemes.Bearer)
             .Configure<BetsiAuthenticationOptions>(ConfigureJwt);
+
+        if (interactive.IsConfigured)
+            AddInteractiveSignIn(services, interactive, options.Claims, environment);
 
         services.AddAuthorization(authorization =>
         {
@@ -147,6 +193,61 @@ public static class AuthenticationSetup
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemAuthorizationResultHandler>();
 
         return services;
+    }
+
+    /// <summary>Cookie plus authorization-code sign-in for the web interface.</summary>
+    private static void AddInteractiveSignIn(
+        IServiceCollection services, InteractiveSignInOptions interactive, BetsiClaimOptions claims,
+        IHostEnvironment environment)
+    {
+        services.AddAuthentication()
+            .AddCookie(BetsiAuthenticationSchemes.Cookie, cookie =>
+            {
+                cookie.Cookie.Name = "betsi.session";
+                cookie.Cookie.HttpOnly = true;
+                cookie.Cookie.SameSite = SameSiteMode.Lax;
+                // Always secure outside Development: this cookie is a signed-in clinician.
+                cookie.Cookie.SecurePolicy = environment.IsDevelopment()
+                    ? CookieSecurePolicy.SameAsRequest
+                    : CookieSecurePolicy.Always;
+
+                // A fixed lifetime, not a sliding one. A shared ward computer left logged in all
+                // week is how the wrong person's name ends up on a clinical action.
+                cookie.ExpireTimeSpan = interactive.SessionLifetime;
+                cookie.SlidingExpiration = false;
+
+                cookie.LoginPath = UI.UiRoutes.SignIn;
+                cookie.LogoutPath = UI.UiRoutes.SignOut;
+                cookie.AccessDeniedPath = UI.UiRoutes.Forbidden;
+            })
+            .AddOpenIdConnect(BetsiAuthenticationSchemes.Oidc, oidc =>
+            {
+                oidc.Authority = interactive.Authority;
+                oidc.ClientId = interactive.ClientId;
+                oidc.ClientSecret = interactive.ClientSecret;
+                oidc.RequireHttpsMetadata = interactive.RequireHttpsMetadata;
+                oidc.SignInScheme = BetsiAuthenticationSchemes.Cookie;
+
+                // Authorization code with PKCE. The tokens stay on the server.
+                oidc.ResponseType = "code";
+                oidc.UsePkce = true;
+                oidc.SaveTokens = false;
+                oidc.GetClaimsFromUserInfoEndpoint = true;
+                oidc.MapInboundClaims = false;
+
+                oidc.Scope.Clear();
+                oidc.Scope.Add("openid");
+                oidc.Scope.Add("profile");
+                foreach (var scope in interactive.Scopes)
+                    oidc.Scope.Add(scope);
+
+                oidc.TokenValidationParameters.NameClaimType = "name";
+                oidc.TokenValidationParameters.RoleClaimType = claims.Role;
+
+                oidc.CallbackPath = UI.UiRoutes.SignInCallback;
+                oidc.SignedOutCallbackPath = UI.UiRoutes.SignOutCallback;
+                oidc.SignedOutRedirectUri = UI.UiRoutes.SignedOut;
+            });
     }
 
     private static BetsiAuthenticationOptions Bind(IConfiguration configuration)

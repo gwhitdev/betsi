@@ -1,0 +1,8 @@
+@page "/forbidden"
+@attribute [AllowAnonymous]
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["NotPermitted"]</PageTitle>
+
+<h1>@T["NotPermitted"]</h1>
+<p>Your role does not give you access to that page. If this is wrong, ask your system administrator to check the role on your account.</p>

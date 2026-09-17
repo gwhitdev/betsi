@@ -1,0 +1,124 @@
+@page "/waiting"
+@using Betsi.Application.Queries
+@using Betsi.Security
+@attribute [Authorize]
+@inject UiScopeRunner Scope
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["WaitingTitle"]</PageTitle>
+
+@* episodes.read, not escalations.read: this board shows names and arrival times. A Site
+   Administrator holds neither, and must see none of it. *@
+<RequirePermission Permission="@Permissions.EpisodesRead">
+
+<h1>@T["WaitingTitle"]</h1>
+<p class="lede">@T["WaitingSummary"]</p>
+
+<LiveBoard OnChanged="LoadAsync" UpdatedAt="@(_page?.GeneratedAt ?? DateTime.UtcNow)" />
+
+@if (_error is not null)
+{
+    <p class="notice notice--error" role="alert">@_error</p>
+}
+
+@if (_page is null)
+{
+    <p>@T["Loading"]</p>
+}
+else if (_rows.Count == 0)
+{
+    <p class="empty">@T["NobodyWaiting"]</p>
+}
+else
+{
+    <p class="summary">
+        <strong>@T["WaitingCount", _rows.Count]</strong>
+        <span>@T["LongestWait", Duration(_rows.Max(r => r.MinutesWaiting))]</span>
+    </p>
+
+    @* A table, because this is tabular data: a screen reader announces the column when it
+       reads a cell, which a grid of divs cannot do. *@
+    <table class="board board--waiting">
+        <caption class="visually-hidden">@T["WaitingTitle"]</caption>
+        <thead>
+            <tr>
+                <th scope="col">@T["ColumnPatient"]</th>
+                <th scope="col">@T["ColumnState"]</th>
+                <th scope="col">@T["ColumnArrived"]</th>
+                <th scope="col">@T["ColumnWaited"]</th>
+                <th scope="col">@T["ColumnTier"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _rows)
+            {
+                <tr class="@(row.AcknowledgementOverdue ? "row--overdue" : null)">
+                    <td>@row.Name</td>
+                    <td>@row.State</td>
+                    <td>@row.ArrivedAt.ToLocalTime().ToString("HH:mm")</td>
+                    <td class="waited">@Duration(row.MinutesWaiting)</td>
+                    <td>
+                        @if (row.HighestTierRaised is { } tier)
+                        {
+                            <span class="tier">@tier</span>
+                            @if (row.AcknowledgementOverdue)
+                            {
+                                <strong class="overdue">@T["Overdue"]</strong>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (_page.NextCursor is not null)
+    {
+        <button type="button" class="button" @onclick="LoadMoreAsync">@T["ShowMore"]</button>
+    }
+}
+
+</RequirePermission>
+
+@code {
+    private WaitingBoardPage? _page;
+    private readonly List<WaitingBoardRow> _rows = [];
+    private string? _error;
+
+    private Task LoadAsync() => FetchAsync(cursor: null, replace: true);
+
+    private Task LoadMoreAsync() => FetchAsync(_page?.NextCursor, replace: false);
+
+    private async Task FetchAsync(string? cursor, bool replace)
+    {
+        await Session.EnsureAsync();
+
+        if (!Session.IsResolved || !Session.Identity.Can(Permissions.EpisodesRead))
+            return;
+
+        try
+        {
+            var result = await Scope.RunAsync(services =>
+                services.GetRequiredService<EpisodeQueries>()
+                    .GetWaitingBoardAsync(new WaitingBoardFilter(Cursor: cursor), CancellationToken.None));
+
+            // A live update refetches the first page and replaces what is shown; "show more"
+            // appends. Otherwise an update while someone is reading page three would silently
+            // throw their place away.
+            if (replace)
+                _rows.Clear();
+
+            _rows.AddRange(result.Items);
+            _page = result;
+            _error = null;
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+    }
+
+    private string Duration(int minutes) =>
+        minutes < 60 ? T["Minutes", minutes] : T["HoursMinutes", minutes / 60, minutes % 60];
+}

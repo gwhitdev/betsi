@@ -1,0 +1,59 @@
+@inherits LayoutComponentBase
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+@* Skip link first in the document, so a keyboard user reaches the content without tabbing
+   through the navigation on every page (WCAG 2.4.1). *@
+<a class="skip-link" href="#main">@T["SkipToContent"]</a>
+
+<header class="site-header">
+    <div class="site-header__identity">
+        <span class="site-header__name">Betsi</span>
+        @if (Session.IsResolved)
+        {
+            <span class="site-header__tenant">@Session.Identity.TenantName</span>
+        }
+    </div>
+
+    <nav class="site-nav" aria-label="@T["MainNavigation"]">
+        <NavLink href="@UiRoutes.EscalationBoard" Match="NavLinkMatch.All">@T["NavEscalations"]</NavLink>
+        <NavLink href="@UiRoutes.WaitingBoard" Match="NavLinkMatch.All">@T["NavWaiting"]</NavLink>
+    </nav>
+
+    <div class="site-header__session">
+        <LanguagePicker />
+        @if (Session.IsResolved)
+        {
+            <span class="site-header__user">
+                @Session.Identity.DisplayName
+                <span class="site-header__role">@Session.Identity.ActingRole</span>
+            </span>
+            <form method="post" action="@UiRoutes.SignOut">
+                <AntiforgeryToken />
+                <button type="submit" class="button button--quiet">@T["SignOut"]</button>
+            </form>
+        }
+    </div>
+</header>
+
+<main id="main" tabindex="-1">
+    @if (Session.IsResolved || Session.UnavailableReason is null)
+    {
+        @Body
+    }
+    else
+    {
+        @* A department that cannot be resolved must say so. An empty board and a broken
+           configuration look identical, and one of them means nobody is waiting. *@
+        <div class="notice notice--error" role="alert">
+            <h1>@T["UnavailableTitle"]</h1>
+            <p>@Session.UnavailableReason</p>
+        </div>
+    }
+</main>
+
+@code {
+    // The layout renders around every page, including before a page has had a chance to resolve
+    // the session, so it resolves it itself. Idempotent: the work happens once per session.
+    protected override Task OnInitializedAsync() => Session.EnsureAsync();
+}
