@@ -1,13 +1,15 @@
 namespace Betsi.Application.Escalations;
 
-using Microsoft.AspNetCore.DataProtection;
+using Betsi.Infrastructure.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 public static class EscalationModule
 {
-    public static IServiceCollection AddEscalationEngine(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddEscalationEngine(
+        this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         var options = new EscalationMonitorOptions();
         configuration.GetSection(EscalationMonitorOptions.SectionName).Bind(options);
@@ -20,12 +22,13 @@ public static class EscalationModule
         services.AddScoped<Betsi.Application.Commands.CommandEnvelopeDispatcher>();
         services.AddHostedService<WaitingTimeMonitorService>();
 
-        AddIntegrations(services, configuration);
+        AddIntegrations(services, configuration, environment);
 
         return services;
     }
 
-    private static void AddIntegrations(IServiceCollection services, IConfiguration configuration)
+    private static void AddIntegrations(
+        IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         // Bound when first resolved, so configuration added after registration (a test host, a
         // secret store) is what takes effect.
@@ -36,12 +39,10 @@ public static class EscalationModule
             return webhooks;
         });
 
-        // Secrets are encrypted with Data Protection. Every instance must share the key ring, or an
-        // instance cannot read a secret another created: configure DataProtection:KeysDirectory
-        // (or a key store) for any multi-instance deployment.
-        var dataProtection = services.AddDataProtection().SetApplicationName("Betsi");
-        if (configuration["DataProtection:KeysDirectory"] is { Length: > 0 } keysDirectory)
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+        // Secrets are encrypted with Data Protection. Every instance must share the key ring, or
+        // an instance cannot read a secret another created; the default store is the control-plane
+        // database, so a second instance needs no extra configuration to be correct.
+        services.AddBetsiDataProtection(configuration, environment);
 
         services.AddSingleton<Betsi.Integrations.IntegrationSecrets>();
         services.AddScoped<Betsi.Integrations.IntegrationAdministration>();

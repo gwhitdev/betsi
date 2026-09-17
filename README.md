@@ -11,7 +11,8 @@ acknowledged, and no auditable record of either.
 - **Current state**: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
 - **Architecture**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - **API**: [`docs/API.md`](docs/API.md) · [versioning](docs/API-VERSIONING.md) · [OpenAPI](docs/openapi/v1.json)
-- **Runbooks**: [tenant operations](docs/runbooks/tenant-operations.md) · [escalation policy](docs/runbooks/escalation-policy.md) · [identity and integrations](docs/runbooks/identity-and-integrations.md)
+- **Runbooks**: [deployment](docs/runbooks/deployment.md) · [backup and restore](docs/runbooks/backup-and-restore.md) · [observability and incidents](docs/runbooks/observability-and-incidents.md) · [tenant operations](docs/runbooks/tenant-operations.md) · [escalation policy](docs/runbooks/escalation-policy.md) · [identity and integrations](docs/runbooks/identity-and-integrations.md)
+- **Compliance**: [DSPT evidence pack](docs/DSPT-EVIDENCE.md)
 
 ## Running it
 
@@ -22,7 +23,11 @@ docker compose up -d          # SQL Server on localhost:1433
 dotnet run --project Betsi    # creates the control plane, provisions and licenses the dev tenants
 ```
 
-Then open <http://localhost:5080/swagger>. Health is at `/health`.
+Then open <http://localhost:5080/swagger>. Health is at `/health`, with `/health/live` and
+`/health/ready` for an orchestrator and a load balancer respectively.
+
+To run the containerised service instead of `dotnet run`, create the two local secret files
+described in [`secrets/README.md`](secrets/README.md) and use `docker compose --profile app up -d --build`.
 In Swagger, click **Authorize** and enter a tenant ID and actor role before using "Try it out".
 
 Two development tenants are seeded from `appsettings.Development.json` into the control-plane
@@ -94,6 +99,7 @@ two contexts, so pass `--context BetsiDbContext` or `--context ControlPlaneDbCon
 | `Betsi/Integrations` | Webhooks, signatures, HL7 v2 and FHIR R4 inbound messages. |
 | `tests/Betsi.Tests` | Domain, infrastructure, control-plane, licensing and API tests. |
 | `tools/Betsi.LicenseTool` | Licence key generation and signing. Never deployed. |
+| `tools/deploy.sh`, `tools/coverage-gate.py` | Deployment with a readiness gate and rollback; the CI coverage threshold. |
 | `docs/runbooks` | Operator and site-administrator procedures. |
 | `design/` | Specification and inspection-report traceability. |
 | `docs/` | Architecture, API reference, versioning policy and the published OpenAPI document. |

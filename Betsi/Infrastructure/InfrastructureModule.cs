@@ -23,6 +23,12 @@ public static class InfrastructureModule
     {
         services.AddSingleton(TimeProvider.System);
 
+        // Recording metrics is infrastructure and every component here may do it; exporting
+        // them is AddBetsiObservability's job. Registered here so a container built without the
+        // observability module — the DI smoke test, a test host — still constructs.
+        services.AddMetrics();
+        services.TryAddSingleton<Betsi.Infrastructure.Observability.BetsiMetrics>();
+
         AddControlPlane(services, configuration, environment);
 
         // The concrete TenantContext is registered as well as the interface so that
@@ -107,6 +113,7 @@ public static class InfrastructureModule
         services.AddSingleton<ITenantSchemaMigrator, SqlServerTenantSchemaMigrator>();
         services.AddSingleton<ITenantRegistry, TenantRegistry>();
         services.AddSingleton<ITenantOperations, TenantOperations>();
+        services.AddSingleton<ITenantDataOperations, TenantDataOperations>();
         services.AddSingleton<IPlatformStartup, PlatformStartup>();
         services.AddHostedService<TenantRegistryRefreshService>();
     }

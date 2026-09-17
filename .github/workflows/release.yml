@@ -1,0 +1,142 @@
+name: Release
+
+# Builds one image per commit on main and deploys it: staging automatically, production behind
+# the approval configured on the `production` environment (MVP-105, MVP-106, MVP-107).
+#
+# The same image is deployed to both. Nothing is rebuilt between environments, so what was
+# tested in staging is what serves patients.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      deploy_to_production:
+        description: Deploy the built image to production after staging
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  REGISTRY: ghcr.io
+
+jobs:
+  image:
+    name: Build and publish the image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.reference.outputs.image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          # Tagged by commit SHA as well as branch, so a deployment names exactly one build and
+          # a rollback names exactly one other.
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image reference
+        id: reference
+        run: echo "image=${{ env.REGISTRY }}/${{ github.repository }}@${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  staging:
+    name: Deploy to staging
+    needs: image
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.BETSI_PUBLIC_URL }}
+    # Until a staging host exists, the environment variable is unset and the job is skipped
+    # rather than failing every push to main on infrastructure that has not been built yet.
+    if: vars.DEPLOY_ENABLED == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the deployment key
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+
+      - name: Deploy, migrate and verify
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ~/.ssh/deploy
+          HEALTH_URL: ${{ vars.HEALTH_URL }}
+        run: ./tools/deploy.sh "${{ needs.image.outputs.image }}" "${{ vars.REMOTE_DIR }}"
+
+      - name: Smoke test
+        # Beyond readiness: the contract the API publishes must be served, and an
+        # unauthenticated caller must still be refused. Both are anonymous, so this needs no
+        # credentials and touches no patient data.
+        env:
+          BASE_URL: ${{ vars.BETSI_PUBLIC_URL }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --max-time 10 "$BASE_URL/openapi/v1.json" | head -c 200
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 "$BASE_URL/api/v1/boards/waiting")
+          if [ "$status" != "401" ]; then
+            echo "::error::An unauthenticated waiting-board request returned $status, expected 401."
+            exit 1
+          fi
+
+  production:
+    name: Deploy to production
+    needs: [image, staging]
+    runs-on: ubuntu-latest
+    # The approval gate is the `production` environment's own protection rule, configured in
+    # the repository settings: a reviewer must approve before this job starts. Keeping it there
+    # rather than in this file means the reviewer list is not changed by a pull request.
+    environment:
+      name: production
+      url: ${{ vars.BETSI_PUBLIC_URL }}
+    if: |
+      vars.DEPLOY_ENABLED == 'true' &&
+      (startsWith(github.ref, 'refs/tags/v') || inputs.deploy_to_production)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the deployment key
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+
+      - name: Deploy, migrate and verify
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ~/.ssh/deploy
+          HEALTH_URL: ${{ vars.HEALTH_URL }}
+        run: ./tools/deploy.sh "${{ needs.image.outputs.image }}" "${{ vars.REMOTE_DIR }}"

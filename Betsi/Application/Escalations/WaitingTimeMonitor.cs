@@ -58,6 +58,7 @@ public sealed class WaitingTimeMonitor : IWaitingTimeMonitor
     private readonly IEscalationPolicyReader _policies;
     private readonly ITenantContext _tenantContext;
     private readonly IServiceScopeFactory _scopes;
+    private readonly Betsi.Infrastructure.Observability.BetsiMetrics _metrics;
     private readonly ILogger<WaitingTimeMonitor> _logger;
 
     public WaitingTimeMonitor(
@@ -65,12 +66,14 @@ public sealed class WaitingTimeMonitor : IWaitingTimeMonitor
         IEscalationPolicyReader policies,
         ITenantContext tenantContext,
         IServiceScopeFactory scopes,
+        Betsi.Infrastructure.Observability.BetsiMetrics metrics,
         ILogger<WaitingTimeMonitor> logger)
     {
         _context = context;
         _policies = policies;
         _tenantContext = tenantContext;
         _scopes = scopes;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -131,7 +134,15 @@ public sealed class WaitingTimeMonitor : IWaitingTimeMonitor
                     $"tier {tier.Level} escalation for episode {patient.Id}",
                     cancellationToken);
 
-                if (sent) raised++; else onFailure();
+                if (sent)
+                {
+                    raised++;
+                    _metrics.EscalationRaised(_tenantContext.TenantId, "waiting-time");
+                }
+                else
+                {
+                    onFailure();
+                }
             }
         }
 
@@ -155,7 +166,15 @@ public sealed class WaitingTimeMonitor : IWaitingTimeMonitor
                 $"follow-up exception for escalation {escalationId}",
                 cancellationToken);
 
-            if (sent) raised++; else onFailure();
+            if (sent)
+            {
+                raised++;
+                _metrics.EscalationRaised(_tenantContext.TenantId, "follow-up-exception");
+            }
+            else
+            {
+                onFailure();
+            }
         }
 
         return raised;

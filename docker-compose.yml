@@ -1,10 +1,15 @@
 # Local development dependencies for Betsi Patient Flow.
 #
-#   docker compose up -d
-#   dotnet run --project Betsi
+#   docker compose up -d                          SQL Server only; run the app with `dotnet run`
+#   docker compose --profile app up -d --build     the containerised service as well
 #
 # The application creates and migrates each tenant database named in
 # appsettings.Development.json on startup, so no manual database setup is needed.
+#
+# The `app` profile is the shape a deployed host runs (see docs/runbooks/deployment.md): the
+# published image, credentials as mounted secret files rather than environment values, and
+# readiness gating the container's health. BETSI_IMAGE selects the image, so a deployment can
+# switch tags — and roll back — without editing this file.
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -17,6 +22,9 @@ services:
       - "1433:1433"
     volumes:
       - betsi-sqlserver-data:/var/opt/mssql
+      # Where `tenants backup` writes and `tenants restore` reads: paths given to those
+      # commands are paths on the database server, which is this container.
+      - betsi-backups:/var/opt/mssql/backups
     healthcheck:
       # The application fails fast if it cannot migrate, so wait for a real login rather
       # than just an open port.
@@ -28,5 +36,44 @@ services:
       retries: 10
       start_period: 30s
 
+  betsi:
+    profiles: [app]
+    image: ${BETSI_IMAGE:-betsi:local}
+    build:
+      context: .
+    container_name: betsi
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${BETSI_ENVIRONMENT:-Development}
+      # Resolved from the mounted file below, never held in this file or in the container's
+      # environment listing. See Betsi/Infrastructure/Configuration/SecretReferences.cs.
+      ConnectionStrings__ControlPlane: secret:control-plane
+      Tenancy__DatabaseServers__default: secret:database-server
+      ControlPlane__MigrateOnStartup: "true"
+      Observability__DeploymentEnvironment: local
+    secrets:
+      - control-plane
+      - database-server
+    healthcheck:
+      test: ["CMD", "/app/Betsi.Core", "--health-probe"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+secrets:
+  # Files, not values: this is how Docker, Kubernetes and Azure Container Apps all present a
+  # secret, and it keeps credentials out of `docker inspect` and out of the process environment.
+  # secrets/ is git-ignored; create the two files from secrets/README.md before using this profile.
+  control-plane:
+    file: ./secrets/control-plane
+  database-server:
+    file: ./secrets/database-server
+
 volumes:
   betsi-sqlserver-data:
+  betsi-backups:

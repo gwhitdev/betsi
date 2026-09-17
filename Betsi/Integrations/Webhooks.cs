@@ -276,6 +276,7 @@ public sealed class WebhookDeliverer
     private readonly IHttpClientFactory _httpClients;
     private readonly WebhookOptions _options;
     private readonly TimeProvider _time;
+    private readonly Betsi.Infrastructure.Observability.BetsiMetrics _metrics;
     private readonly ILogger<WebhookDeliverer> _logger;
 
     public WebhookDeliverer(
@@ -284,6 +285,7 @@ public sealed class WebhookDeliverer
         IHttpClientFactory httpClients,
         WebhookOptions options,
         TimeProvider time,
+        Betsi.Infrastructure.Observability.BetsiMetrics metrics,
         ILogger<WebhookDeliverer> logger)
     {
         _context = context;
@@ -291,6 +293,7 @@ public sealed class WebhookDeliverer
         _httpClients = httpClients;
         _options = options;
         _time = time;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -322,6 +325,7 @@ public sealed class WebhookDeliverer
                 delivery.Status = WebhookDeliveryStatus.DeadLettered;
                 delivery.LastError = "The subscription has been deactivated.";
                 deadLettered++;
+                _metrics.WebhookDelivered(delivery.TenantId, "dead-lettered");
             }
             else
             {
@@ -332,6 +336,8 @@ public sealed class WebhookDeliverer
                     case WebhookDeliveryStatus.DeadLettered: deadLettered++; break;
                     default: failed++; break;
                 }
+
+                _metrics.WebhookDelivered(delivery.TenantId, outcome.ToString().ToLowerInvariant());
             }
 
             // Saved per delivery so a crash mid-batch does not resend the ones already sent.

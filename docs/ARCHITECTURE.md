@@ -276,6 +276,60 @@ command name, tenant and actor only, and `LoggingOutboxPublisher` logs event met
 than payloads. `ProblemDetailsExceptionHandler` returns exception text only outside
 production, because an exception message can contain patient data or a connection string.
 
+## Deployment, secrets and observability
+
+**One image, two roles.** `Dockerfile` builds a single image that serves the API with no
+arguments and runs the operator CLI with `tenants …` or `license …`. A deployment therefore
+applies migrations with exactly the build it is about to run.
+
+**Secrets are references, not values.** Any configuration value may be written as
+`secret:<name>`, `secret:file:<path>` or `secret:env:<NAME>`, and is resolved from the mounted
+secret store before anything binds options. A reference that cannot be resolved stops the
+service starting, naming the key and never the value: an unresolved connection string would
+otherwise become an empty one, and the symptom of that is a service that starts and then
+refuses every request.
+
+**The Data Protection key ring is shared through the control-plane database** by default, so a
+second instance needs no shared filesystem to read a secret the first one wrote. A file-system
+store is available for deployments that prefer a volume; an ephemeral ring is refused outside
+Development, because losing it makes every webhook and inbound integration secret unreadable.
+
+**Three health endpoints**, because an orchestrator asks three questions. `/health/live` says
+the process is up and deliberately touches no database — if it did, a database outage would
+have every instance killed and restarted into the same outage. `/health/ready` says this
+instance can serve tenants, and is what the load balancer and the deployment smoke test read.
+`/health` is the aggregate, for a person.
+
+**Telemetry.** Newline-delimited JSON logs outside Development, OpenTelemetry traces and
+metrics over OTLP, and a correlation id per request that is echoed to the caller and carried on
+every log line. A caller-supplied correlation id is honoured after being checked for control
+characters and capped at the width of the column a command envelope stores it in: it is
+attacker-controlled text that reaches an operator's console, and an id too long to persist
+would turn a traced command into a database error. Metrics carry tenant and command, never a patient identifier — a metrics store has no
+audit trail and a long retention.
+
+See [`runbooks/deployment.md`](runbooks/deployment.md) and
+[`runbooks/observability-and-incidents.md`](runbooks/observability-and-incidents.md).
+
+## Backup, restore, export and destruction
+
+Backups are written by the database server to a path on the database server; this process never
+holds a copy of a department's episodes. Every operation is audited before it is attempted and
+again with its outcome, and every one refuses a tenant that is still serving requests.
+
+A full backup is verified with `RESTORE VERIFYONLY` at the moment it is taken, so an unreadable
+backup is a failure that night rather than a discovery during an incident. A restore relocates
+every file under the target database's name, because the normal case is restoring **beside** the
+live database and verifying before switching; repointing a tenant to the restored database
+requires it to be suspended.
+
+Destruction needs three things: a suspended tenant, an exact match of its name, and an audit
+trail. The registry record survives as a tombstone in state `Destroyed` — requests naming that
+tenant get 404, exactly as for one that never existed, and its database name can never be
+reissued to another site.
+
+See [`runbooks/backup-and-restore.md`](runbooks/backup-and-restore.md).
+
 ## Testing strategy
 
 | Suite | Runs against | Covers |
@@ -288,6 +342,8 @@ production, because an exception message can contain patient data or a connectio
 | `Infrastructure/SqlServerMigrationTests` | SQL Server via Testcontainers | That migrations apply and provider-specific mappings are valid |
 | `ControlPlane/` | SQLite, fake migrator and clock | Registry resolution, lifecycle, idempotency, failure recovery, licence auditing |
 | `ControlPlane/SqlServerProvisioningTests` | SQL Server via Testcontainers | Real database creation, control-plane migration, rowversion, partial failure |
+| `ControlPlane/SqlServerTenantDataTests` | SQL Server via Testcontainers | Backup and verification, restore beside the live database, repointing, export contents, destruction gates, the shared key ring |
+| `Infrastructure/DeploymentTests` | Nothing — pure objects and a service collection | Secret reference resolution and its fail-closed behaviour, key-ring store selection, correlation id sanitising, operator flag parsing |
 | `Licensing/` | Nothing — pure objects | Signatures, tampering, expiry and grace, clock rollback, command classification |
 | `Api/SecurityTests` | The real app, tokens minted per run | Token validation, acting roles, reserved roles, permissions on every endpoint and command, audit of denials and reads |
 | `Api/QueryAndCommandApiTests` | The real app | Episode detail, waiting board paging and filters, command envelope idempotency |

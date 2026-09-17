@@ -3,20 +3,34 @@ using Betsi.Application.Behaviours;
 using Betsi.Application.Escalations;
 using Betsi.Application.Validation;
 using Betsi.Infrastructure;
+using Betsi.Infrastructure.Configuration;
+using Betsi.Infrastructure.DataProtection;
+using Betsi.Infrastructure.Observability;
 using Betsi.ControlPlane;
 using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
 using Betsi.Security;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Serilog;
+using Serilog.Formatting.Compact;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .CreateBootstrapLogger();
+
+// Answered before the host is built: a health probe must not pay for dependency injection,
+// configuration binding or a database connection to ask one question over loopback.
+if (HealthProbe.IsProbe(args))
+{
+    Environment.ExitCode = await HealthProbe.RunAsync(
+        new ConfigurationBuilder().AddEnvironmentVariables().Build());
+    return;
+}
 
 var isOperatorCommand = OperatorCli.IsOperatorCommand(args);
 
@@ -27,16 +41,32 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Before anything binds options, so no component ever sees an unresolved reference and
+    // the process refuses to start if a secret the deployment named is not there.
+    builder.Configuration.ResolveSecretReferences();
+
     // Operator commands share the service's configuration and services, but their output is
     // for a person at a terminal, so framework logging is kept to warnings and above.
     if (isOperatorCommand)
         builder.Configuration["Serilog:MinimumLevel:Default"] = "Warning";
 
-    builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console());
+    // Rendered text for a person at a terminal in Development; newline-delimited JSON
+    // everywhere else, because a log aggregator has to parse it (MVP-109). Serilog carries the
+    // current activity's trace and span ids, which the compact formatter writes as @tr and @sp,
+    // so a log line can be joined to the span that produced it.
+    builder.Host.UseSerilog((context, services, configuration) =>
+    {
+        configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("service.name", context.Configuration["Observability:ServiceName"] ?? "betsi");
+
+        if (context.HostingEnvironment.IsDevelopment() || isOperatorCommand)
+            configuration.WriteTo.Console();
+        else
+            configuration.WriteTo.Console(new CompactJsonFormatter());
+    });
 
     // Enums accepted and returned by name ("IncidentReported"), not by number, so a request body
     // is readable in an audit and does not silently change meaning if an enum is reordered.
@@ -91,7 +121,8 @@ try
     });
 
     builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-    builder.Services.AddEscalationEngine(builder.Configuration);
+    builder.Services.AddBetsiObservability(builder.Configuration);
+    builder.Services.AddEscalationEngine(builder.Configuration, builder.Environment);
 
     builder.Services.AddMediatR(cfg =>
     {
@@ -100,6 +131,8 @@ try
         // Order matters. Logging wraps everything so a rejected command is still traced;
         // auditing sits outside validation so failed validation is recorded too; validation
         // runs last, immediately before the handler.
+        // Metrics outermost: the duration recorded is the one the caller experienced.
+        cfg.AddOpenBehavior(typeof(MetricsBehaviour<,>));
         cfg.AddOpenBehavior(typeof(LoggingBehaviour<,>));
         cfg.AddOpenBehavior(typeof(AuditBehaviour<,>));
         // Authorisation inside auditing, so a refused command leaves an audit row.
@@ -116,7 +149,7 @@ try
     builder.Services.AddProblemDetails();
 
     builder.Services.AddHealthChecks()
-        .AddCheck<TenantDatabaseHealthCheck>("tenant-databases");
+        .AddCheck<TenantDatabaseHealthCheck>("tenant-databases", tags: ["ready"]);
 
     var tenantResolution = new TenantResolutionOptions();
     builder.Configuration.GetSection("TenantResolution").Bind(tenantResolution);
@@ -152,6 +185,11 @@ try
         return;
     }
 
+    // Outermost, so every response carries the id — including the OpenAPI document, the health
+    // probes, and a problem detail written by the exception handler, which replaces the response
+    // and would otherwise discard a header set further in.
+    app.UseCorrelationId();
+
     app.UseExceptionHandler();
 
     // The OpenAPI document is published in every environment (MVP-060): it describes the contract,
@@ -172,7 +210,17 @@ try
     app.UseTenantResolution(tenantResolution);
     app.UseAuthorization();
     app.MapControllers();
+    // Three probes, because an orchestrator asks three different questions. /health/live says
+    // the process is up and must not depend on a database, or a database outage would have
+    // every instance killed and restarted into the same outage. /health/ready says this
+    // instance can serve tenants, and is what a load balancer and a deployment smoke test read.
+    // /health stays as it was: the aggregate, for a person.
     app.MapHealthChecks("/health").AllowAnonymous();
+    app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    }).AllowAnonymous();
 
     await app.Services.GetRequiredService<IPlatformStartup>().RunAsync(CancellationToken.None);
 

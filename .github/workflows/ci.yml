@@ -45,7 +45,23 @@ jobs:
       - name: Test
         # The SQL Server suite uses Testcontainers; the GitHub runner has a Docker daemon,
         # so it runs here even though it skips on a workstation without one.
-        run: dotnet test Betsi.slnx --configuration Release --no-build
+        run: >
+          dotnet test Betsi.slnx --configuration Release --no-build --
+          --coverage --coverage-output-format cobertura --coverage-output full.cobertura.xml
+
+      - name: Coverage gate (Domain and Application ≥70%)
+        # Phase C's exit criterion. The gate covers the two layers that hold the clinical
+        # state machines and the command pipeline; API and Infrastructure are exercised by
+        # the integration and SQL Server suites but are not gated on a percentage.
+        run: python3 tools/coverage-gate.py TestResults/full.cobertura.xml --threshold 70
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: TestResults/full.cobertura.xml
+          if-no-files-found: warn
 
   schema-drift:
     name: Migrations match the model
