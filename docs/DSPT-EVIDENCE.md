@@ -62,10 +62,19 @@ clinical safety officer — all three are unassigned, which is the largest gap i
 | Assertion | State | Evidence |
 |---|---|---|
 | Backups are taken | ✅ Capability | `tenants backup`, full and log, verified with `RESTORE VERIFYONLY` at the time of taking. Schedule in the runbook. Proved against SQL Server in `SqlServerTenantDataTests`. |
-| Backups are encrypted | 🔄 Optional | `--certificate` encrypts with AES-256. Without it the command warns and the audit entry records "unencrypted". **A site must configure the certificate.** |
-| Restores are tested | ⛔ Missing | Monthly drill defined; never run outside the automated test. |
-| Recovery objectives are stated | ✅ Stated | RPO ≤ 5 minutes (5-minute log backups), RTO ≤ 30 minutes. Neither has been measured against a real dataset. |
+| Backups are encrypted | ✅ Capability, exercised | `--certificate` encrypts with AES-256; without it the command warns and the audit entry records "unencrypted". Exercised on 2026-09-17 against the development server — `msdb.dbo.backupset` confirms `aes_256` / `CERTIFICATE`. `tools/dev-certificates.sh` creates the certificate and backs it up, because an encrypted backup cannot be restored without it. **A deployment supplies its own, from its own certificate authority.** |
+| Restores are tested | 🔄 Run once, on development data | First drill 2026-09-17: restored the previous backup into a separate database in **10 seconds**, with episode, domain-event and audit-log counts matching the source exactly (7 / 45 / 43). See §Drill log. **This proves the mechanism, not the recovery time**: seven episodes is not a department's history, and no drill has been run against a deployed environment or a realistic volume. |
+| Recovery objectives are stated | 🔄 Stated, partly measured | RPO ≤ 5 minutes (5-minute log backups, not yet scheduled anywhere), RTO ≤ 30 minutes. The 10-second drill is evidence the procedure works, not that the objective is met at volume. |
 | Data can be exported and destroyed | ✅ | `tenants export` (full JSON export, audited by row count only) and `tenants destroy` (suspended + name confirmation + audit, tombstone retained). |
+
+### Drill log
+
+Every restore drill, as the runbook requires. An entry is only worth writing if it says what was
+actually measured, including when the answer is "on data too small to prove anything".
+
+| Date | Tenant | Backup age | Elapsed | Rows matched | Notes |
+|---|---|---|---|---|---|
+| 2026-09-17 | Ysbyty Glan Clwyd (development) | minutes | 10s | ✅ 7 episodes, 45 events, 43 audit rows | First drill. Local Docker SQL Server, AES-256 encrypted backup, restored into a separate database and dropped afterwards. Development volumes only |
 
 ## 7. Unsupported systems and patching
 
@@ -81,7 +90,7 @@ clinical safety officer — all three are unassigned, which is the largest gap i
 | Traffic is encrypted | 🔄 Partial | HTTPS redirection outside Development; TLS termination and certificate management belong to the site's infrastructure. Webhook targets must be HTTPS — plain HTTP is a Development-only setting the service refuses to start with elsewhere. |
 | SSRF protection | ✅ | Webhook targets are checked at connect time; private network targets are refused outside Development. |
 | SQL injection | ✅ | EF Core parameterises everything; the operator commands that must build identifiers validate them against a strict pattern and pass paths as parameters. |
-| Secrets at rest | 🔄 Partial | Webhook and inbound secrets are encrypted with a Data Protection key ring shared through the control-plane database. The ring itself is encrypted only if `DataProtection:CertificatePath` is set — the service warns on every start when it is not. |
+| Secrets at rest | 🔄 Partial | Webhook and inbound secrets are encrypted with a Data Protection key ring shared through the control-plane database. The ring itself is encrypted only if `DataProtection:CertificatePath` is set — the service warns on every start when it is not. `tools/dev-certificates.sh` creates one for development; a deployment supplies its own. |
 | Penetration test | ⛔ Missing | Needs an external tester: authentication and cross-tenant isolation. |
 
 ---
@@ -91,8 +100,11 @@ clinical safety officer — all three are unassigned, which is the largest gap i
 1. Name a **clinical safety officer**, a **Caldicott Guardian** and a **DPO**. Nothing in §1, §4
    or §5 can be asserted without them.
 2. Complete a **DPIA** for the pilot site.
-3. Run the **restore drill** against a deployed environment and record the elapsed time.
-4. Configure **backup encryption** and **key-ring encryption** certificates.
+3. Run the **restore drill** against a deployed environment, at a realistic volume, and record
+   the elapsed time. The local drill proves the procedure; it says nothing about the objective.
+4. Configure **backup encryption** and **key-ring encryption** certificates from the site's own
+   certificate authority. Both paths are exercised locally, so this is provisioning, not
+   development.
 5. Commission the **penetration test**: authentication, and cross-tenant isolation.
 6. Approve the **role-to-permission matrix** with information governance.
 7. Deploy a **log aggregator and paging tool**, and prove one alert reaches a person.

@@ -11,11 +11,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Manifests first: restore is cached until a dependency actually changes.
-COPY global.json Directory.Build.props Directory.Packages.props Betsi.slnx ./
+# Manifests first: restore is cached until a dependency actually changes. Only the service's
+# own project — the tests and the licence tool are not in the image, and .dockerignore keeps
+# them out of the build context entirely.
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY Betsi/Betsi.csproj Betsi/
-COPY tests/Betsi.Tests/Betsi.Tests.csproj tests/Betsi.Tests/
-COPY tools/Betsi.LicenseTool/Betsi.LicenseTool.csproj tools/Betsi.LicenseTool/
 RUN dotnet restore Betsi/Betsi.csproj
 
 COPY . .

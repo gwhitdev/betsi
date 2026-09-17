@@ -1,0 +1,26 @@
+# Keep the build context to source.
+#
+# bin/ and obj/ matter most: they hold this machine's restore output, including absolute paths
+# into a NuGet cache the container does not have. Copying them over the container's own restore
+# makes the publish fail with NETSDK1064, which reads like a missing package rather than what it
+# is — the host's build output shadowing the container's.
+**/bin/
+**/obj/
+**/TestResults/
+
+# Never in an image: local credentials, licence signing keys, and anything the developer's
+# environment happens to hold.
+secrets/
+**/*.private.pem
+.env
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+
+# Nothing the running service reads.
+docs/
+design/
+tests/
+**/*.md

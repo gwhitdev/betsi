@@ -1,0 +1,244 @@
+{
+  "title": "Betsi patient flow",
+  "uid": "betsi-flow",
+  "tags": [
+    "betsi"
+  ],
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Request rate and errors",
+      "description": "Throughput by route, and the 5xx rate the error alert fires on (>1% over 5 minutes).",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count[5m]))",
+          "legendFormat": "{{http_route}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        },
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m]))",
+          "legendFormat": "5xx",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Latency p50 / p95 / p99",
+      "description": "Budget: median under 150ms, p95 under 500ms, p99 under 1000ms (MVP-111).",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Event lag (outbox)",
+      "description": "How long a message waited before publication. The alert fires above 60s p95: this is what says whether a webhook subscriber is seeing escalations in time.",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(betsi_outbox_lag_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        },
+        {
+          "expr": "sum by (outcome) (rate(betsi_outbox_messages_total[5m]))",
+          "legendFormat": "{{outcome}}",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Escalations raised, by tenant and trigger",
+      "description": "A department that stops raising escalations has either had a quiet night or a broken monitor, and the difference matters.",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (tenant, trigger) (increase(betsi_escalations_raised_total[15m]))",
+          "legendFormat": "{{tenant}} {{trigger}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Commands by outcome",
+      "description": "Write throughput and the failure rate, by command.",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (command, outcome) (rate(betsi_commands_total[5m]))",
+          "legendFormat": "{{command}} {{outcome}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Webhook deliveries",
+      "description": "Delivery outcomes per tenant. Sustained failures mean a subscriber is down, or the key ring was lost and stored secrets can no longer be read.",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "betsi-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(betsi_webhook_deliveries_total[5m]))",
+          "legendFormat": "{{outcome}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "betsi-prometheus"
+          }
+        }
+      ]
+    }
+  ]
+}
