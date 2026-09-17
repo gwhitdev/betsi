@@ -6,10 +6,10 @@
 
 | Phase | State |
 |---|---|
-| A Foundation · B Write path · C Tests & CI | ✅ Delivered — [PR #1](https://github.com/gwhitdev/betsi/pull/1) (CI green, unmerged) |
-| D Multi-tenancy & licensing · E Escalation engine | ✅ Delivered — PR #1 |
-| G API, authentication, integration | ✅ Delivered — [PR #2](https://github.com/gwhitdev/betsi/pull/2), stacked on #1 (CI green) |
-| I Deployment & operations | ✅ Delivered — branch `feature/phase-i`, stacked on #2; PR not yet opened |
+| A Foundation · B Write path · C Tests & CI | ✅ Delivered and merged — [PR #1](https://github.com/gwhitdev/betsi/pull/1) |
+| D Multi-tenancy & licensing · E Escalation engine | ✅ Delivered and merged — PR #1 |
+| G API, authentication, integration | ✅ Delivered and merged — [PR #2](https://github.com/gwhitdev/betsi/pull/2) |
+| I Deployment & operations | ✅ Delivered and merged — [PR #3](https://github.com/gwhitdev/betsi/pull/3) |
 | F Clinical safety features | ⛔ Not started — gated on a named clinical safety officer |
 | H UI & dashboards | ⏳ Not started — read APIs exist; needs a real-time transport decision |
 
@@ -364,14 +364,12 @@ Set 2026-09-17. This project runs on one developer's machine; nothing is deploye
 that is a deliberate position rather than a gap. The items below are ordered so that each one is
 verifiable locally.
 
-**Now — get `main` honest**
+**Done 2026-09-17 — `main` is honest**
 
-1. **Merge the stack**: [PR #1](https://github.com/gwhitdev/betsi/pull/1), then retarget and
-   merge [PR #2](https://github.com/gwhitdev/betsi/pull/2), then open and merge a PR for
-   `feature/phase-i`. Until this happens `main` holds none of seven phases' work.
-2. **Branch protection on `main`**: require the four CI checks. **Not** a required review — a
-   single-developer repository cannot satisfy one, and a rule that must be bypassed every time
-   teaches everyone to bypass rules. Add the review requirement when there is a second developer.
+1. ~~Merge the stack.~~ PRs #1, #2 and #3 merged; `main` holds all seven delivered phases.
+2. ~~Branch protection on `main`.~~ Three required status checks, strict. **Not** a required
+   review — a single-developer repository cannot satisfy one, and a rule that must be bypassed
+   every time teaches everyone to bypass rules. Add it when there is a second developer.
 
 **Next — Phase H, the UI** (~15d, §Phase H above)
 

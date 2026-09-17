@@ -10,13 +10,15 @@
 
 Phases **A (executable foundation)**, **B (write path)**, **C (testing & CI)**,
 **D (multi-tenancy & licensing)**, **E (escalation engine)**, **G (API, authentication,
-integration)** and **I (deployment & operations)** are implemented. A–E are in
-[PR #1](https://github.com/gwhitdev/betsi/pull/1) (`feature/phases-a-to-e`), G is in
-[PR #2](https://github.com/gwhitdev/betsi/pull/2) (`feature/phase-g`, stacked on #1), and I is on
-`feature/phase-i`, stacked on #2, with no PR opened yet. PRs #1 and #2 have CI green;
-**nothing is merged, so `main` still holds none of this work.**
-Phase I closed Phase C's coverage gate. Branch protection on `main` remains outstanding and is a
-repository setting rather than code.
+integration)** and **I (deployment & operations)** are implemented, and **all of it is on
+`main`** as of 2026-09-17: [PR #1](https://github.com/gwhitdev/betsi/pull/1) (A–E),
+[PR #2](https://github.com/gwhitdev/betsi/pull/2) (G) and
+[PR #3](https://github.com/gwhitdev/betsi/pull/3) (I), each merged with CI green.
+
+Phase C is closed: Phase I added the coverage gate, and `main` is now protected by its three
+required status checks. Protection is status checks only, without a required review — a
+single-developer repository cannot satisfy one, and a rule that must be bypassed every time
+teaches everyone to bypass rules. Add the review requirement when there is a second developer.
 
 | Check | Result (2026-09-16) |
 |---|---|
@@ -24,9 +26,9 @@ repository setting rather than code.
 | `dotnet test Betsi.slnx` | ✅ 382 passed, 0 failed, 0 skipped — including all three SQL Server Testcontainers suites |
 | Migrations applied to real SQL Server | ✅ Control plane and both dev tenants against SQL Server 2022 in Docker, and via Testcontainers |
 | `dotnet dotnet-ef migrations has-pending-model-changes` | ✅ No drift, both contexts (repo-local tool) |
-| CI on pull requests | ✅ Green on PR #1 and PR #2: build, tests, migration drift (both contexts), vulnerable packages. Phase I adds the coverage gate; not yet run on a PR |
+| CI on pull requests | ✅ Green on PR #1, #2 and #3: build, tests with the coverage gate, migration drift (both contexts), vulnerable packages |
 | Coverage gate (≥70% Domain + Application) | ✅ Enforced in CI by `tools/coverage-gate.py`. Actual: Domain 98.1%, Application 89.3% |
-| Branch protection on `main` | ❌ Not configured — a repository setting, not code. Planned as status checks only; see "What to do next" |
+| Branch protection on `main` | ✅ Three required status checks, strict (a branch must be current before merging). No required review, deliberately — see "Where we are" |
 
 ---
 
@@ -59,7 +61,7 @@ repository setting rather than code.
 | C-1 Domain tests | ✅ | 68 tests, every aggregate's legal and illegal transitions |
 | C-2 Repository / infrastructure tests | ✅ | SQLite in memory, plus the SQL Server Testcontainers suites for migrations, provisioning, indexes and board paging |
 | C-3 API integration tests | ✅ | `WebApplicationFactory`: patient journey, tenant isolation, problem details, escalation engine, security, queries, command envelope, integrations, OpenAPI contract |
-| C-4 CI pipeline | ✅ | `.github/workflows/ci.yml`: build, test with coverage, the ≥70% Domain and Application gate, migration drift (both contexts), vulnerable packages. Runs on every pull request including stacked ones. **Branch protection on `main` is still off** — a repository setting, not code |
+| C-4 CI pipeline | ✅ | `.github/workflows/ci.yml`: build, test with coverage, the ≥70% Domain and Application gate, migration drift (both contexts), vulnerable packages. Runs on every pull request including stacked ones, and all three checks are required on `main` |
 
 ## Phase D — Multi-tenancy & licensing (MVP-007, 008, 009)
 
@@ -203,11 +205,10 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 Agreed 2026-09-17; the full reasoning is in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §4.
 Everything below is verifiable on one developer's machine, which is where this system lives.
 
-1. **Merge the stack**: PR #1, then retarget and merge PR #2, then a PR for `feature/phase-i`.
-   `main` currently holds none of seven phases' work.
-2. **Branch protection on `main`**: the four CI checks, and deliberately *not* a required
-   review — a single-developer repository cannot satisfy one, and a rule that is bypassed every
-   time is worse than no rule. Add it when there is a second developer.
+1. ~~Merge the stack~~ — done 2026-09-17. PRs #1, #2 and #3 are merged; `main` holds all seven
+   delivered phases.
+2. ~~Branch protection on `main`~~ — done 2026-09-17. Three required status checks, strict, no
+   required review.
 3. **Phase H** — Blazor Server, SignalR from the first screen, escalation dashboard then waiting
    room board, WCAG 2.2 AA and Welsh throughout, with Keycloak in compose so authentication is
    exercised by a person rather than only by tests.
