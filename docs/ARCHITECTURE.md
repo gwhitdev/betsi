@@ -344,6 +344,9 @@ See [`runbooks/backup-and-restore.md`](runbooks/backup-and-restore.md).
 | `ControlPlane/SqlServerProvisioningTests` | SQL Server via Testcontainers | Real database creation, control-plane migration, rowversion, partial failure |
 | `ControlPlane/SqlServerTenantDataTests` | SQL Server via Testcontainers | Backup and verification, restore beside the live database, repointing, export contents, destruction gates, the shared key ring |
 | `Infrastructure/DeploymentTests` | Nothing — pure objects and a service collection | Secret reference resolution and its fail-closed behaviour, key-ring store selection, correlation id sanitising, operator flag parsing |
+| `Infrastructure/MigrationRollbackTests` | SQL Server via Testcontainers | Every migration's `Down` executed and reapplied, data older than a withdrawn migration surviving it, and a step-by-step upgrade producing the same schema as a fresh install |
+| `Infrastructure/WaitingBoardLoadTests` | SQL Server via Testcontainers | The waiting board against 150 waiting patients and 8 concurrent readers, asserted against the MVP-111 budget and recorded to `TestResults/performance.txt` |
+| `UI/` | Nothing — pure objects | The interface's identity rules, the open-redirect guard, and what may nudge a board |
 | `Licensing/` | Nothing — pure objects | Signatures, tampering, expiry and grace, clock rollback, command classification |
 | `Api/SecurityTests` | The real app, tokens minted per run | Token validation, acting roles, reserved roles, permissions on every endpoint and command, audit of denials and reads |
 | `Api/QueryAndCommandApiTests` | The real app | Episode detail, waiting board paging and filters, command envelope idempotency |

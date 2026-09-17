@@ -67,6 +67,15 @@ clinical safety officer — all three are unassigned, which is the largest gap i
 | Recovery objectives are stated | 🔄 Stated, partly measured | RPO ≤ 5 minutes (5-minute log backups, not yet scheduled anywhere), RTO ≤ 30 minutes. The 10-second drill is evidence the procedure works, not that the objective is met at volume. |
 | Data can be exported and destroyed | ✅ | `tenants export` (full JSON export, audited by row count only) and `tenants destroy` (suspended + name confirmation + audit, tombstone retained). |
 
+### Performance measurements
+
+| Date | What | Result | Against |
+|---|---|---|---|
+| 2026-09-17 | Waiting board, 150 waiting, 8 concurrent readers, 200 queries, SQL Server in Docker | median 6ms, p95 18ms, p99 45ms, max 61ms | Budget: median <150ms, p95 <500ms, p99 <1000ms. **Comfortably inside — on a developer's machine.** A site's numbers depend on its hardware and its history; what this guards is the change that turns the index-backed keyset query into a scan |
+
+Recorded automatically to `TestResults/performance.txt` by the load suite, so the figure exists
+outside a console nobody read.
+
 ### Drill log
 
 Every restore drill, as the runbook requires. An entry is only worth writing if it says what was
