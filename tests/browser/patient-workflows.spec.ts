@@ -40,6 +40,8 @@ test('register a patient, record an observation and preserve a correction', asyn
   await expect(page.locator('.observation')).toContainText('Speaking comfortably');
 
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Correct an observation' })).toBeVisible();
+  await expect(page.getByLabel('Respiratory rate')).toHaveValue('16');
   await page.getByLabel('Respiratory rate').fill('18');
   await page.getByLabel(/I have confirmed this is Browser Workflow/).check();
   await page.getByRole('button', { name: 'Save observation' }).click();
