@@ -1,5 +1,6 @@
 namespace Betsi.Application.Commands.Handlers;
 
+using Betsi.Domain;
 using Betsi.Domain.Aggregates;
 using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
@@ -69,35 +70,78 @@ public sealed class CompletePatientTriageCommandHandler
 }
 
 public sealed class BeginPatientTreatmentCommandHandler
-    : AggregateCommandHandler<BeginPatientTreatmentCommand, PatientEpisode>
+    : IRequestHandler<BeginPatientTreatmentCommand, CommandResult>
 {
+    private readonly IAggregateRepository<PatientEpisode> _episodes;
+    private readonly IAggregateRepository<Location> _locations;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantContext _tenantContext;
 
     public BeginPatientTreatmentCommandHandler(
-        IAggregateRepository<PatientEpisode> repository, ITenantContext tenantContext)
-        : base(repository) => _tenantContext = tenantContext;
+        IAggregateRepository<PatientEpisode> episodes,
+        IAggregateRepository<Location> locations,
+        IUnitOfWork unitOfWork,
+        ITenantContext tenantContext)
+    {
+        _episodes = episodes;
+        _locations = locations;
+        _unitOfWork = unitOfWork;
+        _tenantContext = tenantContext;
+    }
 
-    protected override Guid GetAggregateId(BeginPatientTreatmentCommand c) => c.PatientEpisodeId;
-    protected override int? GetExpectedVersion(BeginPatientTreatmentCommand c) => c.ExpectedVersion;
+    public async Task<CommandResult> Handle(BeginPatientTreatmentCommand command, CancellationToken cancellationToken)
+    {
+        var episode = await _episodes.GetByIdAsync(command.PatientEpisodeId, cancellationToken)
+            ?? throw new AggregateNotFoundException(nameof(PatientEpisode), command.PatientEpisodeId);
+        if (episode.Version != command.ExpectedVersion)
+            throw new AggregateConcurrencyException(nameof(PatientEpisode), episode.Id, command.ExpectedVersion, episode.Version);
 
-    protected override void Apply(BeginPatientTreatmentCommand c, PatientEpisode episode) =>
-        episode.BeginTreatment(c.LocationId, _tenantContext.ActorId, _tenantContext.ActorRole);
+        // Apply the episode state rule first so an illegal workflow remains a 422 even when
+        // the supplied location is also wrong. Nothing is persisted until both aggregates commit.
+        episode.BeginTreatment(command.LocationId, _tenantContext.ActorId, _tenantContext.ActorRole);
+        var location = await _locations.GetByIdAsync(command.LocationId, cancellationToken)
+            ?? throw new AggregateNotFoundException(nameof(Location), command.LocationId);
+        location.OccupySpace(episode.Id, _tenantContext.ActorId, _tenantContext.ActorRole);
+        await _unitOfWork.CommitAsync([episode, location], cancellationToken);
+        return new CommandResult(episode.Id, episode.Version);
+    }
 }
 
 public sealed class DischargePatientCommandHandler
-    : AggregateCommandHandler<DischargePatientCommand, PatientEpisode>
+    : IRequestHandler<DischargePatientCommand, CommandResult>
 {
+    private readonly IAggregateRepository<PatientEpisode> _episodes;
+    private readonly IAggregateRepository<Location> _locations;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantContext _tenantContext;
 
     public DischargePatientCommandHandler(
-        IAggregateRepository<PatientEpisode> repository, ITenantContext tenantContext)
-        : base(repository) => _tenantContext = tenantContext;
+        IAggregateRepository<PatientEpisode> episodes,
+        IAggregateRepository<Location> locations,
+        IUnitOfWork unitOfWork,
+        ITenantContext tenantContext)
+    {
+        _episodes = episodes;
+        _locations = locations;
+        _unitOfWork = unitOfWork;
+        _tenantContext = tenantContext;
+    }
 
-    protected override Guid GetAggregateId(DischargePatientCommand c) => c.PatientEpisodeId;
-    protected override int? GetExpectedVersion(DischargePatientCommand c) => c.ExpectedVersion;
+    public async Task<CommandResult> Handle(DischargePatientCommand command, CancellationToken cancellationToken)
+    {
+        var episode = await _episodes.GetByIdAsync(command.PatientEpisodeId, cancellationToken)
+            ?? throw new AggregateNotFoundException(nameof(PatientEpisode), command.PatientEpisodeId);
+        if (episode.Version != command.ExpectedVersion)
+            throw new AggregateConcurrencyException(nameof(PatientEpisode), episode.Id, command.ExpectedVersion, episode.Version);
 
-    protected override void Apply(DischargePatientCommand c, PatientEpisode episode) =>
-        episode.Discharge(_tenantContext.ActorId, _tenantContext.ActorRole, c.DischargeNotes);
+        Location? location = episode.LocationId is { } locationId
+            ? await _locations.GetByIdAsync(locationId, cancellationToken)
+            : null;
+        episode.Discharge(_tenantContext.ActorId, _tenantContext.ActorRole, command.DischargeNotes);
+        location?.ReleaseSpace(episode.Id, _tenantContext.ActorId, _tenantContext.ActorRole);
+        await _unitOfWork.CommitAsync(location is null ? [episode] : [episode, location], cancellationToken);
+        return new CommandResult(episode.Id, episode.Version);
+    }
 }
 
 public sealed class CancelPatientEpisodeCommandHandler

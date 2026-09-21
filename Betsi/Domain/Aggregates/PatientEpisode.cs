@@ -28,6 +28,52 @@ public class PatientEpisode : AggregateRoot
     public DateTime DateOfBirth { get; private set; }
 
     /// <summary>
+    /// Who is with the patient, when anyone is. Recorded for every patient, and the thing an
+    /// unaccompanied-child alert turns on (MVP-034).
+    /// </summary>
+    public string? CarerName { get; private set; }
+
+    /// <summary>Their relationship to the patient: "Mother", "Foster carer", "Neighbour".</summary>
+    public string? CarerRelationship { get; private set; }
+
+    /// <summary>
+    /// Whether a carer is currently present. Distinct from <see cref="CarerName"/> being null:
+    /// "nobody has asked" and "asked, and the patient is alone" are different states, and only
+    /// the second one is a safeguarding fact.
+    /// </summary>
+    public bool? CarerPresent { get; private set; }
+
+    public DateTime? CarerPresenceRecordedAt { get; private set; }
+
+    /// <summary>
+    /// A safeguarding concern has been raised on this episode (MVP-032). Never cleared by this
+    /// aggregate: a concern that was raised stays raised, and its outcome is recorded on the
+    /// escalation it created.
+    /// </summary>
+    public bool SafeguardingConcernRaised { get; private set; }
+
+    /// <summary>
+    /// A clinician has flagged this patient as deteriorating (MVP-041). Set by the flag and
+    /// cleared by nothing: what follows is an escalation someone has to answer.
+    /// </summary>
+    public bool DeteriorationFlagged { get; private set; }
+
+    public DateTime? DeteriorationFlaggedAt { get; private set; }
+
+    /// <summary>The clinician currently assigned to this episode (MVP-033).</summary>
+    public Guid? AssignedStaffActorId { get; private set; }
+    public string? AssignedStaffName { get; private set; }
+    public string? AssignedStaffRole { get; private set; }
+    public bool? AssignedStaffPaediatricTrained { get; private set; }
+    public DateTime? StaffAssignedAt { get; private set; }
+
+    /// <summary>
+    /// True after the current lack of paediatric competence has raised an alert. A trained
+    /// assignment clears it so a later, distinct gap can alert again.
+    /// </summary>
+    public bool PaediatricSkillGapAlertOpen { get; private set; }
+
+    /// <summary>
     /// Resource ID if assigned to a location/bed (e.g., bed number, room ID).
     /// </summary>
     public Guid? LocationId { get; private set; }
@@ -61,7 +107,7 @@ public class PatientEpisode : AggregateRoot
     /// Current waiting time (calculated as now - ArrivedAt or TreatmentStartedAt).
     /// Used to determine if escalation is needed.
     /// </summary>
-    public TimeSpan CurrentWaitingTime => 
+    public TimeSpan CurrentWaitingTime =>
         State switch
         {
             PatientState.Discharged or PatientState.Cancelled => TimeSpan.Zero,
@@ -136,7 +182,162 @@ public class PatientEpisode : AggregateRoot
         return episode;
     }
 
+    /// <summary>The patient's age in completed years at <paramref name="now"/>.</summary>
+    public int AgeYearsAt(DateTime now) => Clinical.AgeBands.YearsBetween(DateOfBirth, now);
+
+    /// <summary>
+    /// The age band that decides what is clinically normal for this patient (MVP-030, MVP-031).
+    /// </summary>
+    /// <remarks>
+    /// Always derived, never stored: a child has a birthday during a long stay, and a band
+    /// written down at registration would then be wrong for the rest of it.
+    /// </remarks>
+    public Clinical.AgeBand AgeBandAt(DateTime now) => Clinical.AgeBands.For(DateOfBirth, now);
+
+    public bool IsPaediatricAt(DateTime now) => Clinical.AgeBands.IsPaediatric(AgeBandAt(now));
+
     // ============= Command Handlers =============
+
+    /// <summary>
+    /// Records who is with the patient, or that nobody is (MVP-034).
+    /// </summary>
+    /// <remarks>
+    /// Allowed in any state including after discharge: a carer arriving late, or leaving, is a
+    /// fact about the episode whatever the patient's clinical state. Every change is an event,
+    /// because "when did we last know somebody was with this child" is the question a
+    /// safeguarding review asks.
+    /// </remarks>
+    public void RecordCarerPresence(
+        bool present, string? carerName, string? relationship, DateTime now, Guid actorId, string actorRole)
+    {
+        if (present && string.IsNullOrWhiteSpace(carerName))
+            throw new DomainRuleViolationException("Recording a carer as present requires their name.");
+
+        var wasPresent = CarerPresent;
+
+        CarerPresent = present;
+        CarerName = present ? carerName!.Trim() : null;
+        CarerRelationship = present ? relationship?.Trim() : null;
+        CarerPresenceRecordedAt = now;
+
+        RaiseDomainEvent(new CarerPresenceRecorded
+        {
+            CarerPresent = present,
+            CarerRelationship = present ? CarerRelationship : null,
+            PreviouslyPresent = wasPresent,
+            OccurredAt = now,
+            ActorId = actorId,
+            ActorRole = actorRole
+        });
+    }
+
+    /// <summary>
+    /// Records that a safeguarding concern has been raised (MVP-032).
+    /// </summary>
+    /// <remarks>
+    /// The escalation that must follow is created by the handler, in the same transaction. This
+    /// aggregate only records that the concern exists; it is deliberately not possible to
+    /// withdraw one here.
+    /// </remarks>
+    public void RaiseSafeguardingConcern(DateTime now, Guid actorId, string actorRole)
+    {
+        if (SafeguardingConcernRaised)
+        {
+            // Not an error: two clinicians noticing the same thing is expected. The second is
+            // recorded as an event and changes nothing, so nobody is told their concern was
+            // rejected.
+            RaiseDomainEvent(new SafeguardingConcernRepeated
+            {
+                OccurredAt = now, ActorId = actorId, ActorRole = actorRole
+            });
+            return;
+        }
+
+        SafeguardingConcernRaised = true;
+
+        RaiseDomainEvent(new SafeguardingConcernRaised
+        {
+            OccurredAt = now, ActorId = actorId, ActorRole = actorRole
+        });
+    }
+
+    /// <summary>
+    /// A clinician's judgement that this patient is deteriorating (MVP-041).
+    /// </summary>
+    /// <remarks>
+    /// Manual, always. The MVP raises nothing automatically from vital signs: a score is shown
+    /// to a clinician, and a clinician decides. See hazard H-05 — an escalation engine driven by
+    /// a transcription of a scoring table nobody has clinically verified would be worse than no
+    /// engine at all.
+    /// </remarks>
+    public void FlagDeterioration(string reason, DateTime now, Guid actorId, string actorRole)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new DomainRuleViolationException("A deterioration flag must say what was observed.");
+
+        if (State is PatientState.Discharged or PatientState.Cancelled)
+        {
+            throw new DomainRuleViolationException(
+                $"Cannot flag deterioration for a patient who is {State}.");
+        }
+
+        DeteriorationFlagged = true;
+        DeteriorationFlaggedAt = now;
+
+        RaiseDomainEvent(new PatientDeteriorationFlagged
+        {
+            Reason = reason.Trim(),
+            OccurredAt = now,
+            ActorId = actorId,
+            ActorRole = actorRole
+        });
+    }
+
+    /// <summary>Records the clinician responsible for the episode and their declared competence.</summary>
+    public void AssignClinicalStaff(
+        Guid assignedActorId, string assignedName, string assignedRole, bool paediatricTrained,
+        DateTime now, Guid actorId, string actorRole)
+    {
+        if (assignedActorId == Guid.Empty)
+            throw new DomainRuleViolationException("Assigned staff must have a valid identity.");
+        if (string.IsNullOrWhiteSpace(assignedName))
+            throw new DomainRuleViolationException("Assigned staff must have a name.");
+        if (string.IsNullOrWhiteSpace(assignedRole))
+            throw new DomainRuleViolationException("Assigned staff must have a role.");
+
+        AssignedStaffActorId = assignedActorId;
+        AssignedStaffName = assignedName.Trim();
+        AssignedStaffRole = assignedRole.Trim();
+        AssignedStaffPaediatricTrained = paediatricTrained;
+        StaffAssignedAt = now;
+        if (paediatricTrained)
+            PaediatricSkillGapAlertOpen = false;
+
+        RaiseDomainEvent(new ClinicalStaffAssigned
+        {
+            AssignedStaffActorId = assignedActorId,
+            AssignedStaffRole = AssignedStaffRole,
+            PaediatricTrained = paediatricTrained,
+            OccurredAt = now,
+            ActorId = actorId,
+            ActorRole = actorRole
+        });
+    }
+
+    /// <summary>Marks that the current paediatric competence gap has produced an alert.</summary>
+    public void MarkPaediatricSkillGapAlerted(DateTime now, Guid actorId, string actorRole)
+    {
+        if (PaediatricSkillGapAlertOpen)
+            return;
+
+        PaediatricSkillGapAlertOpen = true;
+        RaiseDomainEvent(new PaediatricSkillGapDetected
+        {
+            OccurredAt = now,
+            ActorId = actorId,
+            ActorRole = actorRole
+        });
+    }
 
     /// <summary>
     /// Moves the patient from Waiting state to InTriage state.
@@ -278,6 +479,42 @@ public class PatientDischarged : DomainEvent
 /// <summary>
 /// Event raised when patient episode is cancelled.
 /// </summary>
+public class CarerPresenceRecorded : DomainEvent
+{
+    public bool CarerPresent { get; set; }
+
+    /// <summary>The relationship, not the carer's name: an event is published to subscribers.</summary>
+    public string? CarerRelationship { get; set; }
+
+    public bool? PreviouslyPresent { get; set; }
+}
+
+public class SafeguardingConcernRaised : DomainEvent
+{
+}
+
+/// <summary>A second concern on an episode that already has one. Recorded, changes nothing.</summary>
+public class SafeguardingConcernRepeated : DomainEvent
+{
+}
+
+public class PatientDeteriorationFlagged : DomainEvent
+{
+    /// <summary>What the clinician observed. Free text, and clinical: never published outward.</summary>
+    public string Reason { get; set; } = string.Empty;
+}
+
+public class ClinicalStaffAssigned : DomainEvent
+{
+    public Guid AssignedStaffActorId { get; set; }
+    public string AssignedStaffRole { get; set; } = string.Empty;
+    public bool PaediatricTrained { get; set; }
+}
+
+public class PaediatricSkillGapDetected : DomainEvent
+{
+}
+
 public class PatientEpisodeCancelled : DomainEvent
 {
     public string? Reason { get; set; }

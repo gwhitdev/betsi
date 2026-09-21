@@ -113,6 +113,10 @@ cannot probe for the existence of records they cannot see.
 | POST | `/patients/{id}/triage/complete` | Complete triage; patient awaits treatment. |
 | POST | `/patients/{id}/treatment/begin` | Move into treatment at a location. |
 | POST | `/patients/{id}/discharge` | Discharge, ending the episode. |
+| POST | `/episodes/{id}/carer-presence` | Record whether a carer is present; an unaccompanied child raises a linked safeguarding escalation atomically. |
+| POST | `/episodes/{id}/staff-assignment` | Assign a clinician, record paediatric competence, and raise one linked skill-gap alert when required. |
+| POST | `/episodes/{id}/safeguarding-concerns` | Record a safeguarding concern and create its assigned escalation atomically. |
+| POST | `/episodes/{id}/deterioration-flags` | Record staff-observed deterioration and create its assigned escalation atomically. |
 | POST | `/patients/{id}/cancel` | Cancel, e.g. left without being seen. |
 
 The episode state machine:
@@ -145,6 +149,55 @@ POST /api/v1/patients/{id}/triage/begin
 ```
 
 The id in the path is authoritative; a conflicting id in the body is ignored.
+
+## Clinical observations
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/episodes/{episodeId}/observations` | Record a structured observation or append-only correction. Requires `observations.record`. |
+| GET | `/episodes/{episodeId}/observations` | Read the complete observation and correction history. Requires `observations.read`. |
+
+The POST body may contain vital signs, pain score and scale, pain location, character and onset,
+an explicit `source`, separate SBAR sections, breathing/circulation/mobility findings with
+optional detail, notes, and `kind` (`Routine`,
+`Triage` or `Concern`). A correction supplies `supersedesObservationId` and the observation's
+`expectedVersion`; the original remains unchanged and the response identifies the new record.
+The API returns a DTO so persistence details are not exposed. Adult NEWS2 is informational only,
+and is unavailable for paediatric episodes or incomplete vital signs; it never raises an
+escalation automatically. Observation and correction state, domain events and outbox records
+commit in one transaction. Command audit records are saved separately afterwards; a crash between
+the two saves can leave an unaudited command, while the transactional event record remains.
+
+`source` is one of `NursingAssessment`, `MedicalReview`, `TriageAssessment`,
+`ClinicalHandover` or `OtherClinicalAssessment`. SBAR is stored as four separately queryable
+sections: situation, background, assessment and recommendation. Breathing, circulation and
+mobility each use `NoConcern`, `Concern` or `UnableToAssess`, with a separate details field.
+These generic findings carry no diagnostic meaning and never trigger an automatic escalation;
+site-approved clinical meaning remains the responsibility of the recording clinician and local
+procedure.
+A failed command clears tracked changes before saving its failure audit so that the audit save
+cannot accidentally persist a rejected correction. Use `POST /commands` with command type
+`RecordObservation` and an idempotency key for safe retries; the direct observation POST does
+not deduplicate repeated submissions.
+
+A pain score requires `painScale`, `painLocation`, `painCharacter` and `painOnsetAt`. At or above
+`Clinical:PainReviewThreshold` (default 5), recording a new assessment creates a `SystemAlert`
+for `Clinical:PainReviewRole` in the same transaction. Correcting one high score to another does
+not duplicate the alert. These threshold and ownership defaults are provisional site policy and
+require clinical approval before real-patient use.
+
+For patients younger than `Clinical:PaediatricPathwayAgeYears` (default 18), the episode records
+the assigned clinician and whether paediatric training is declared. An untrained assignment, or
+the first observation made without a trained assignee, creates one `SystemAlert` for
+`Clinical:PaediatricSkillGapRole`. The episode marker prevents repeated observations from
+creating duplicate alerts. A later trained assignment clears the marker but retains the existing
+escalation and immutable history for review.
+
+Scoring implements the adult oxygen-saturation Scale 1 table only. It does not establish
+clinical eligibility for NEWS2 (including pregnancy or whether Scale 2 is required). This
+limitation remains a clinical-use gate in H-05. Invalid numeric values and unsupported temperature
+precision return no score when calling the calculator; the API rejects these inputs. Reference
+and engineering boundary evidence: [N1 verification](N1-VERIFICATION.md).
 
 ## Escalations
 

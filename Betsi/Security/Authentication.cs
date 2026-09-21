@@ -247,6 +247,13 @@ public static class AuthenticationSetup
                 oidc.CallbackPath = UI.UiRoutes.SignInCallback;
                 oidc.SignedOutCallbackPath = UI.UiRoutes.SignOutCallback;
                 oidc.SignedOutRedirectUri = UI.UiRoutes.SignedOut;
+                // Tokens are deliberately not saved in the cookie. Keycloak needs the
+                // client ID to validate the return URI when no id_token_hint is supplied.
+                oidc.Events.OnRedirectToIdentityProviderForSignOut = context =>
+                {
+                    context.ProtocolMessage.ClientId = interactive.ClientId;
+                    return Task.CompletedTask;
+                };
             });
     }
 

@@ -9,6 +9,15 @@ public static class Permissions
     public const string EpisodesRead = "episodes.read";
     public const string QueuesManage = "queues.manage";
 
+    /// <summary>Record vital signs, pain scores and clinical notes against an episode.</summary>
+    public const string ObservationsRecord = "observations.record";
+
+    /// <summary>Read a patient's observation history.</summary>
+    public const string ObservationsRead = "observations.read";
+
+    /// <summary>Raise a safeguarding concern. Deliberately wider than clinical care roles.</summary>
+    public const string SafeguardingRaise = "safeguarding.raise";
+
     public const string EscalationsRaise = "escalations.raise";
     public const string EscalationsRespond = "escalations.respond";
     public const string EscalationsRead = "escalations.read";
@@ -26,6 +35,7 @@ public static class Permissions
     public static readonly IReadOnlyList<string> All =
     [
         PatientsRegister, PatientsCare, PatientsDischarge, EpisodesRead, QueuesManage,
+        ObservationsRecord, ObservationsRead, SafeguardingRaise,
         EscalationsRaise, EscalationsRespond, EscalationsRead,
         PolicyRead, PolicyPropose, PolicyDecide,
         LocationsManage, LicenseRead, WebhooksManage, IntegrationsManage, IntegrationIngest
@@ -96,6 +106,16 @@ public static class RoleMatrix
             Permissions.PatientsRegister, Permissions.EscalationsRaise, Permissions.EpisodesRead);
 
         Grant([.. Clinical, "Clinical Lead", "Matron"], Permissions.PatientsCare, Permissions.PatientsDischarge);
+
+        // Observations are clinical: taking them and reading them belong to the people who
+        // deliver care, plus the supervisory roles an escalation can land on.
+        Grant([.. Clinical, "Clinical Lead", "Matron"], Permissions.ObservationsRecord);
+        Grant([.. Clinical, .. Supervisory], Permissions.ObservationsRead);
+
+        // Safeguarding is deliberately wider than clinical care. A receptionist who notices a
+        // child alone in a waiting room must be able to say so without finding a nurse first,
+        // and a concern raised by the wrong person is a far better failure than one not raised.
+        Grant([.. Clinical, .. Supervisory, .. Flow, "Receptionist"], Permissions.SafeguardingRaise);
         Grant([.. Clinical, .. Flow, "Matron"], Permissions.QueuesManage);
 
         // Everyone an escalation can be assigned to must be able to see and act on it.

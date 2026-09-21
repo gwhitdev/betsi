@@ -6,6 +6,326 @@
     "version": "v1"
   },
   "paths": {
+    "/api/v1/episodes/{episodeId}/staff-assignment": {
+      "post": {
+        "tags": [
+          "ClinicalSafety"
+        ],
+        "summary": "Assigns clinical staff and records whether paediatric competence is held.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignClinicalStaffCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignClinicalStaffCommand"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignClinicalStaffCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/episodes/{episodeId}/carer-presence": {
+      "post": {
+        "tags": [
+          "ClinicalSafety"
+        ],
+        "summary": "Records whether a carer is currently with the patient.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCarerPresenceCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCarerPresenceCommand"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCarerPresenceCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/episodes/{episodeId}/safeguarding-concerns": {
+      "post": {
+        "tags": [
+          "ClinicalSafety"
+        ],
+        "summary": "Raises a safeguarding concern and its linked escalation atomically.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseSafeguardingConcernCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseSafeguardingConcernCommand"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseSafeguardingConcernCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/episodes/{episodeId}/deterioration-flags": {
+      "post": {
+        "tags": [
+          "ClinicalSafety"
+        ],
+        "summary": "Records clinical deterioration and raises its linked escalation atomically.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagPatientDeteriorationCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagPatientDeteriorationCommand"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagPatientDeteriorationCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/commands": {
       "post": {
         "tags": [
@@ -1778,6 +2098,138 @@
         }
       }
     },
+    "/api/v1/episodes/{episodeId}/observations": {
+      "post": {
+        "tags": [
+          "Observations"
+        ],
+        "summary": "Records an observation or a correction preserving the original measurements.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordObservationCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordObservationCommand"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordObservationCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Observations"
+        ],
+        "summary": "Returns original and corrected observations in recording order.",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ObservationView"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/patients/register": {
       "post": {
         "tags": [
@@ -2535,6 +2987,49 @@
         },
         "additionalProperties": false
       },
+      "AssessmentFinding": {
+        "enum": [
+          "NoConcern",
+          "Concern",
+          "UnableToAssess"
+        ],
+        "type": "string",
+        "description": "A deliberately non-diagnostic structured finding. Site-approved clinical detail remains\nin the adjacent text field; this enum must not be interpreted as a score or trigger."
+      },
+      "AssignClinicalStaffCommand": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignedStaffActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignedStaffName": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedStaffRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "paediatricTrained": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Assigns a clinician to an episode and records paediatric competence (MVP-033)."
+      },
       "AuditTrailEntry": {
         "type": "object",
         "properties": {
@@ -2757,6 +3252,17 @@
         "additionalProperties": false,
         "description": "Command to complete patient triage and move to awaiting treatment."
       },
+      "Consciousness": {
+        "enum": [
+          "Alert",
+          "NewConfusion",
+          "RespondsToVoice",
+          "RespondsToPain",
+          "Unresponsive"
+        ],
+        "type": "string",
+        "description": "Level of consciousness, as NEWS2 records it (ACVPU)."
+      },
       "CreateLocationCommand": {
         "type": "object",
         "properties": {
@@ -2878,6 +3384,62 @@
           "nhsNumber": {
             "type": "string",
             "nullable": true
+          },
+          "carerPresent": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "carerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "carerRelationship": {
+            "type": "string",
+            "nullable": true
+          },
+          "carerPresenceRecordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "safeguardingConcernRaised": {
+            "type": "boolean"
+          },
+          "deteriorationFlagged": {
+            "type": "boolean"
+          },
+          "deteriorationFlaggedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requiresPaediatricPathway": {
+            "type": "boolean"
+          },
+          "assignedStaffActorId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedStaffName": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedStaffRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignedStaffPaediatricTrained": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "staffAssignedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "paediatricSkillGapAlertOpen": {
+            "type": "boolean"
           },
           "state": {
             "type": "string",
@@ -3176,6 +3738,31 @@
         },
         "additionalProperties": false
       },
+      "FlagPatientDeteriorationCommand": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "description": "What the clinician observed: \u0022declining consciousness\u0022, \u0022respiratory distress\u0022.",
+            "nullable": true
+          },
+          "responsibleRole": {
+            "type": "string",
+            "description": "Who should respond. Defaults to the site\u0027s senior clinical role.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "A clinician\u0027s judgement that a patient is deteriorating, which escalates (MVP-041)."
+      },
       "FollowUpExceptionCard": {
         "type": "object",
         "properties": {
@@ -3383,6 +3970,189 @@
           }
         },
         "additionalProperties": false
+      },
+      "ObservationSource": {
+        "enum": [
+          "NursingAssessment",
+          "MedicalReview",
+          "TriageAssessment",
+          "ClinicalHandover",
+          "OtherClinicalAssessment"
+        ],
+        "type": "string"
+      },
+      "ObservationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "ageBand": {
+            "type": "string",
+            "nullable": true
+          },
+          "respiratoryRate": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "oxygenSaturation": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "onSupplementalOxygen": {
+            "type": "boolean"
+          },
+          "systolicBloodPressure": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pulse": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "consciousness": {
+            "type": "string",
+            "nullable": true
+          },
+          "temperature": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "painScore": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "painScale": {
+            "type": "string",
+            "nullable": true
+          },
+          "painLocation": {
+            "type": "string",
+            "nullable": true
+          },
+          "painCharacter": {
+            "type": "string",
+            "nullable": true
+          },
+          "painOnsetAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarSituation": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarBackground": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarAssessment": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarRecommendation": {
+            "type": "string",
+            "nullable": true
+          },
+          "breathingFinding": {
+            "type": "string",
+            "nullable": true
+          },
+          "breathingDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "circulationFinding": {
+            "type": "string",
+            "nullable": true
+          },
+          "circulationDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobilityFinding": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobilityDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "earlyWarningScore": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "highestSingleParameter": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "scoreUnavailable": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedByRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "supersedesObservationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "supersededByObservationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PainScale": {
+        "enum": [
+          "NumericRating",
+          "Faces",
+          "Flacc"
+        ],
+        "type": "string",
+        "description": "Which pain scale a score came from. A number without its scale means nothing."
       },
       "PatientSummary": {
         "type": "object",
@@ -3683,6 +4453,31 @@
         "additionalProperties": false,
         "description": "Proposes a new revision restoring an earlier approved one (rollback)."
       },
+      "RaiseSafeguardingConcernCommand": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "description": "What was observed. Clinical free text; never leaves the tenant database.",
+            "nullable": true
+          },
+          "responsibleRole": {
+            "type": "string",
+            "description": "Overrides the site\u0027s default safeguarding role, when one is known locally.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Raises a safeguarding concern, which escalates immediately (MVP-032)."
+      },
       "ReassignEscalationCommand": {
         "type": "object",
         "properties": {
@@ -3701,6 +4496,164 @@
         },
         "additionalProperties": false,
         "description": "Hands an escalation to a different role, which must acknowledge it afresh."
+      },
+      "RecordCarerPresenceCommand": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "carerPresent": {
+            "type": "boolean"
+          },
+          "carerName": {
+            "type": "string",
+            "description": "Required when a carer is present.",
+            "nullable": true
+          },
+          "carerRelationship": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Records who is with the patient, or that nobody is (MVP-034)."
+      },
+      "RecordObservationCommand": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientEpisodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Routine, Triage or Concern. A correction is implied by Betsi.Application.Commands.RecordObservationCommand.SupersedesObservationId.",
+            "nullable": true
+          },
+          "respiratoryRate": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "oxygenSaturation": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "onSupplementalOxygen": {
+            "type": "boolean"
+          },
+          "systolicBloodPressure": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pulse": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "consciousness": {
+            "$ref": "#/components/schemas/Consciousness"
+          },
+          "temperature": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "painScore": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "painScale": {
+            "$ref": "#/components/schemas/PainScale"
+          },
+          "painLocation": {
+            "type": "string",
+            "description": "Where the patient reports or displays pain.",
+            "nullable": true
+          },
+          "painCharacter": {
+            "type": "string",
+            "description": "Clinical description such as sharp, burning or cramping.",
+            "nullable": true
+          },
+          "painOnsetAt": {
+            "type": "string",
+            "description": "When the current pain began, when known.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "source": {
+            "$ref": "#/components/schemas/ObservationSource"
+          },
+          "sbarSituation": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarBackground": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarAssessment": {
+            "type": "string",
+            "nullable": true
+          },
+          "sbarRecommendation": {
+            "type": "string",
+            "nullable": true
+          },
+          "breathingFinding": {
+            "$ref": "#/components/schemas/AssessmentFinding"
+          },
+          "breathingDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "circulationFinding": {
+            "$ref": "#/components/schemas/AssessmentFinding"
+          },
+          "circulationDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobilityFinding": {
+            "$ref": "#/components/schemas/AssessmentFinding"
+          },
+          "mobilityDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "supersedesObservationId": {
+            "type": "string",
+            "description": "The observation this one corrects. The earlier one is kept and marked superseded;\nnothing is ever edited or deleted.",
+            "format": "uuid",
+            "nullable": true
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "description": "Required for corrections: the version of the observation being superseded.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Records a set of observations for a patient (MVP-040, MVP-042)."
       },
       "RegisterInboundSourceRequest": {
         "type": "object",
@@ -4105,6 +5058,9 @@
   ],
   "tags": [
     {
+      "name": "ClinicalSafety"
+    },
+    {
       "name": "Commands"
     },
     {
@@ -4124,6 +5080,9 @@
     },
     {
       "name": "Locations"
+    },
+    {
+      "name": "Observations"
     },
     {
       "name": "Patients"

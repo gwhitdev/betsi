@@ -123,6 +123,7 @@ public sealed class EscalationQueries
 {
     public const int MaxHistoryDays = 30;
     public const int ListLimit = 500;
+    public const int HistoryListLimit = 50;
 
     private static readonly Escalation.EscalationState[] OpenStates =
     [
@@ -172,7 +173,7 @@ public sealed class EscalationQueries
             .Where(e => !OpenStates.Contains(e.State) &&
                         ((e.ResolvedAt != null && e.ResolvedAt >= historyFrom) || (e.ClosedAt != null && e.ClosedAt >= historyFrom)))
             .OrderByDescending(e => e.ResolvedAt ?? e.ClosedAt)
-            .Take(ListLimit + 1)
+            .Take(HistoryListLimit + 1)
             .ToListAsync(cancellationToken);
 
         var followUps = await _context.FollowUpExceptions.AsNoTracking()
@@ -191,9 +192,9 @@ public sealed class EscalationQueries
             .Select(e => new { e.Trigger, e.TierLevel })
             .ToListAsync(cancellationToken);
 
-        var truncated = open.Count > ListLimit || history.Count > ListLimit || followUps.Count > ListLimit;
+        var truncated = open.Count > ListLimit || history.Count > HistoryListLimit || followUps.Count > ListLimit;
         open = open.Take(ListLimit).ToList();
-        history = history.Take(ListLimit).ToList();
+        history = history.Take(HistoryListLimit).ToList();
         followUps = followUps.Take(ListLimit).ToList();
 
         var patients = await PatientsAsync(

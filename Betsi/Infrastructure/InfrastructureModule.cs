@@ -22,6 +22,17 @@ public static class InfrastructureModule
         IHostEnvironment environment)
     {
         services.AddSingleton(TimeProvider.System);
+        var clinical = new Betsi.Application.Commands.Handlers.ClinicalOptions();
+        configuration.GetSection(Betsi.Application.Commands.Handlers.ClinicalOptions.SectionName).Bind(clinical);
+        if (clinical.UnaccompaniedChildAgeYears is < 1 or > 18 ||
+            clinical.PaediatricPathwayAgeYears is < 1 or > 21 ||
+            clinical.PainReviewThreshold is < 0 or > 10 ||
+            !Betsi.Security.RoleMatrix.Grants(clinical.SafeguardingRole, Betsi.Security.Permissions.EscalationsRespond) ||
+            !Betsi.Security.RoleMatrix.Grants(clinical.DeteriorationRole, Betsi.Security.Permissions.EscalationsRespond) ||
+            !Betsi.Security.RoleMatrix.Grants(clinical.PainReviewRole, Betsi.Security.Permissions.EscalationsRespond) ||
+            !Betsi.Security.RoleMatrix.Grants(clinical.PaediatricSkillGapRole, Betsi.Security.Permissions.EscalationsRespond))
+            throw new InvalidOperationException("Clinical configuration requires valid age/pain thresholds and responding staff roles.");
+        services.AddSingleton(clinical);
 
         // Recording metrics is infrastructure and every component here may do it; exporting
         // them is AddBetsiObservability's job. Registered here so a container built without the

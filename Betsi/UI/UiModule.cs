@@ -4,6 +4,8 @@ using Betsi.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 
 public sealed class UiOptions
@@ -74,9 +76,15 @@ public static class UiModule
             .AddInteractiveServerRenderMode()
             // Each page declares its own [Authorize]; the router renders a sign-in prompt for
             // the rest. A blanket policy here would fight the framework's negotiation requests.
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .Add(endpoint =>
+            {
+                // .NET 10 exposes the generated circuit transport options as metadata.
+                foreach (var transport in endpoint.Metadata.OfType<HttpConnectionDispatcherOptions>())
+                    transport.CloseOnAuthenticationExpiration = true;
+            });
 
-        app.MapHub<BoardHub>(UiRoutes.Hub);
+        app.MapHub<BoardHub>(UiRoutes.Hub, options => options.CloseOnAuthenticationExpiration = true);
 
         MapSignIn(app);
         return app;
@@ -107,7 +115,7 @@ public static class UiModule
         // The language a person reads in is a preference, not identity, so it is a plain cookie
         // and survives sign-out. POST because it changes state, and same-site so another site
         // cannot set it.
-        app.MapPost(UiRoutes.Language, (HttpContext context, string culture, string? returnUrl) =>
+        app.MapPost(UiRoutes.Language, (HttpContext context, [FromForm] string culture, [FromForm] string? returnUrl) =>
         {
             if (!UiModule.SupportedCultures.Contains(culture, StringComparer.OrdinalIgnoreCase))
                 return Results.BadRequest("Unsupported language.");

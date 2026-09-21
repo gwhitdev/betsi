@@ -75,8 +75,8 @@ body {
 .site-header__session { display: flex; align-items: center; gap: 1rem; }
 .site-header__role { display: block; font-size: 0.875rem; opacity: 0.95; }
 
-.site-nav { display: flex; gap: 1.25rem; }
-.site-nav a { color: #fff; text-decoration: none; padding: 0.35rem 0; border-bottom: 3px solid transparent; }
+.site-nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; max-width: 100%; min-width: 0; }
+.site-nav a { color: #fff; text-decoration: none; padding: 0.35rem 0; border-bottom: 3px solid transparent; overflow-wrap: anywhere; }
 .site-nav a:hover { text-decoration: underline; }
 /* The current page is marked by weight and an underline, not colour alone. */
 .site-nav a.active { border-bottom-color: #fff; font-weight: 700; }
@@ -92,14 +92,16 @@ h2 { font-size: 1.375rem; margin: 2rem 0 0.5rem; }
 .notice { padding: 1rem 1.25rem; border-left: 6px solid; margin: 1rem 0; }
 .notice--error { background: var(--overdue-bg); border-color: var(--overdue-ink); color: var(--overdue-ink); }
 .notice--warning { background: var(--warning-bg); border-color: var(--warning-ink); color: var(--warning-ink); }
+.notice--success { background: #e9f6ef; border-color: var(--accent); color: #003d2b; }
 .notice h2 { margin-top: 0; }
 
-.live-status { display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; color: var(--ink-quiet); }
+.live-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.95rem; color: var(--ink-quiet); }
 .live-status::before { content: "●"; }
 .live-status--on::before { color: var(--accent); }
 /* Not colour alone: the text beside it says "Reconnecting". */
 .live-status--off::before { color: var(--overdue-ink); }
 
+.board-scroll { position: relative; max-width: 100%; overflow-x: auto; }
 table.board { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1.5rem; }
 .board th, .board td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--line); }
 .board thead th { background: var(--panel); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.02em; }
@@ -109,8 +111,53 @@ table.board { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1.5rem; }
 .waited { font-variant-numeric: tabular-nums; font-weight: 700; }
 .tier { display: inline-block; min-width: 1.75rem; text-align: center; padding: 0.1rem 0.4rem; background: var(--panel); border: 1px solid var(--line); }
 
-.summary { display: flex; gap: 1.5rem; font-size: 1.25rem; }
+.summary { display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 1.25rem; }
 .empty { font-size: 1.25rem; color: var(--ink-quiet); }
+
+.clinical-form { max-width: 62rem; margin: 1rem 0 2rem; }
+.clinical-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(14rem, 1fr)); gap: 1rem 1.5rem; margin-bottom: 1rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field--wide { grid-column: 1 / -1; }
+.field--checkbox { flex-direction: row; align-items: center; padding-top: 2rem; }
+.field label, .identity-confirmation label { font-weight: 700; }
+.field input, .field select, .field textarea {
+    font: inherit; min-height: 2.75rem; padding: 0.4rem 0.55rem; border: 2px solid var(--line); border-radius: 0;
+}
+.field textarea { min-height: 7rem; resize: vertical; }
+.clinical-form fieldset[disabled] { opacity: 0.65; }
+.field--checkbox input, .identity-confirmation input { min-width: 1.5rem; min-height: 1.5rem; }
+.hint, .metadata { color: var(--ink-quiet); font-size: 0.95rem; }
+.validation-message, .validation-errors { color: var(--overdue-ink); }
+.identity-confirmation { display: flex; align-items: flex-start; gap: 0.6rem; padding: 1rem; margin: 1rem 0; background: var(--warning-bg); }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+.patient-identifiers, .observation-values { display: grid; grid-template-columns: repeat(4, minmax(10rem, 1fr)); gap: 0.75rem; }
+.patient-identifiers { padding: 1rem; background: var(--panel); }
+.patient-identifiers div, .observation-values div { min-width: 0; }
+.patient-identifiers dt, .observation-values dt { color: var(--ink-quiet); font-size: 0.9rem; }
+.patient-identifiers dd, .observation-values dd { margin: 0; font-weight: 700; }
+.observation-list { display: grid; gap: 1rem; }
+.observation { border: 1px solid var(--line); border-left: 6px solid var(--accent); padding: 1rem; }
+.observation--superseded { border-left-color: var(--line); background: var(--panel); }
+.observation header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem; }
+.observation h3 { margin: 0 0 0.75rem; font-size: 1.15rem; }
+.status-label { color: var(--warning-ink); }
+.tier-editor { display: grid; gap: 1rem; margin: 1rem 0; }
+.tier-fields { border: 1px solid var(--line) !important; padding: 1rem !important; }
+.tier-fields legend { padding: 0 0.4rem; font-weight: 700; }
+.policy-details { margin-top: 1rem; }
+.policy-preview { max-width: 62rem; padding: 1rem; background: var(--panel); }
+.policy-revision { max-width: 70rem; border-top: 2px solid var(--line); padding: 1rem 0 1.5rem; }
+.policy-card h3 { margin-bottom: 0.5rem; }
+.decision-panel { max-width: 62rem; padding: 1rem; background: var(--panel); border: 0; margin: 0; }
+.inline-action { margin-top: 0.5rem; min-width: 15rem; }
+.inline-action summary, .link-button { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.inline-action fieldset { display: grid; gap: 0.35rem; border: 1px solid var(--line); padding: 0.75rem; margin-top: 0.4rem; }
+.inline-action input, .inline-action select, .inline-action textarea { font: inherit; width: 100%; min-height: 2.5rem; }
+.inline-action label { font-weight: 700; }
+.link-button { font: inherit; background: transparent; border: 0; padding: 0.4rem 0; }
+.audit-trail { max-width: 70rem; }
 
 .button {
     font: inherit;
@@ -123,7 +170,7 @@ table.board { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1.5rem; }
     min-height: 2.75rem;
     min-width: 2.75rem;
 }
-.button:hover { background: #003d2b; }
+.button:hover { background: #003d2b; color: #fff; }
 .button[disabled] { opacity: 0.6; cursor: progress; }
 .button--quiet { background: transparent; color: inherit; border-color: currentColor; }
 
@@ -144,8 +191,8 @@ table.board { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1.5rem; }
 @media (max-width: 40rem) {
     body { font-size: 1rem; }
     .site-header { flex-direction: column; align-items: flex-start; }
-    .board thead { display: none; }
-    .board tr { display: block; border-bottom: 2px solid var(--line); padding: 0.5rem 0; }
-    .board td { display: flex; justify-content: space-between; border: 0; }
-    .board td::before { content: attr(data-label); font-weight: 700; }
+    .site-nav { width: 100%; }
+    .site-header__session { flex-wrap: wrap; }
+    #reconnect-banner { flex-wrap: wrap; }
+    .form-grid, .patient-identifiers, .observation-values { grid-template-columns: 1fr; }
 }

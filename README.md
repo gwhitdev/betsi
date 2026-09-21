@@ -35,6 +35,14 @@ roles and must choose one) and `chosen`. They are fixtures — see
 recreate the container (`docker compose rm -sf keycloak && docker compose up -d keycloak`):
 Keycloak skips importing a realm that already exists.
 
+To create another development account, open the Keycloak admin console at
+<http://localhost:8081/admin/>, sign in with `admin` / `admin`, and select the `betsi` realm.
+Choose **Users** → **Add user**. In **Betsi access** on the user's **Details** page, select a
+department and one or more Betsi roles, then save the user. Set a password on the
+**Credentials** tab and turn **Temporary** off if the user should not have to replace it at first
+sign-in. For an account with several roles, also choose the Betsi acting role. These application
+roles are user attributes, so they appear under **Betsi access**, not under **Role mapping**.
+
 To run the containerised service instead of `dotnet run`, create the two local secret files
 described in [`secrets/README.md`](secrets/README.md) and use `docker compose --profile app up -d --build`.
 In Swagger, click **Authorize** and enter a tenant ID and actor role before using "Try it out".
@@ -93,6 +101,21 @@ provisioning) use Testcontainers; they skip when no Docker daemon is reachable a
 
 EF Core tooling is a repo-local tool: `dotnet tool restore`, then `dotnet dotnet-ef …`. There are
 two contexts, so pass `--context BetsiDbContext` or `--context ControlPlaneDbContext`.
+
+Browser checks require Node 24 and use Playwright and axe against real Keycloak login and isolated test databases:
+
+```bash
+npm ci
+npx playwright install --with-deps chromium
+dotnet build Betsi.slnx
+docker compose up -d --wait sqlserver keycloak
+npm run test:ui
+```
+
+Port 8080 must be free; the suite owns its temporary application process. The ordinary app on
+5080 can stay running. See [browser verification](docs/N2-VERIFICATION.md) for coverage,
+artifacts and deferred human reviews. After changing the pinned SignalR npm version, run
+`npm run vendor:signalr` and commit the updated local browser bundle with its licence notice.
 
 ## Repository layout
 

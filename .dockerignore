@@ -23,4 +23,6 @@ secrets/
 docs/
 design/
 tests/
+node_modules/
+TestResults/
 **/*.md

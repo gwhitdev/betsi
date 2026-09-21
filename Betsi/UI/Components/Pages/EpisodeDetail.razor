@@ -1,0 +1,766 @@
+@page "/episodes/{EpisodeId:guid}"
+@using Betsi.Application.Commands
+@using Betsi.Application.Queries
+@using Betsi.Domain.Clinical
+@using Betsi.Domain.Aggregates
+@using Betsi.Security
+@using MediatR
+@attribute [Authorize]
+@inject UiScopeRunner Scope
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@(_episode is null ? T["EpisodeTitle"] : $"{_episode.FirstName} {_episode.LastName}")</PageTitle>
+
+<RequirePermission Permission="@Permissions.EpisodesRead">
+    @if (_loading)
+    {
+        <p>@T["Loading"]</p>
+    }
+    else if (_notFound)
+    {
+        <h1>@T["EpisodeNotFound"]</h1>
+        <p><a href="@UiRoutes.WaitingBoard">@T["BackToWaiting"]</a></p>
+    }
+    else if (_episode is not null)
+    {
+        <h1>@_episode.FirstName @_episode.LastName</h1>
+        <p class="lede">@T["EpisodeSummary", T[_episode.State], _episode.AgeYears]</p>
+
+        <dl class="patient-identifiers" aria-label="@T["PatientIdentifiers"]">
+            <div><dt>@T["DateOfBirth"]</dt><dd>@_episode.DateOfBirth.ToString("d")</dd></div>
+            <div><dt>@T["NhsNumber"]</dt><dd>@(_episode.NhsNumber ?? T["NotRecorded"])</dd></div>
+            <div><dt>@T["Arrived"]</dt><dd>@_episode.ArrivedAt.ToLocalTime().ToString("g")</dd></div>
+            <div><dt>@T["EpisodeState"]</dt><dd>@T[_episode.State]</dd></div>
+        </dl>
+
+        @if (_error is not null)
+        {
+            <p class="notice notice--error" role="alert">@_error</p>
+        }
+        @if (_success is not null)
+        {
+            <p class="notice notice--success" role="status">@_success</p>
+        }
+
+        @if (Session.Identity.Can(Permissions.PatientsCare) && _episode.State is not "Discharged" and not "Cancelled")
+        {
+            <section aria-labelledby="patient-flow-heading">
+                <h2 id="patient-flow-heading">@T["PatientFlowActions"]</h2>
+                <div class="form-actions">
+                    @if (_episode.State == "Waiting")
+                    {
+                        <button type="button" class="button" disabled="@_saving" @onclick="BeginTriageAsync">@T["BeginTriage"]</button>
+                    }
+                    @if (_episode.State == "InTriage")
+                    {
+                        <button type="button" class="button" disabled="@_saving" @onclick="CompleteTriageAsync">@T["CompleteTriage"]</button>
+                    }
+                </div>
+
+                @if (_episode.State is "InTriage" or "AwaitingTreatment")
+                {
+                    <EditForm Model="_lifecycle" OnValidSubmit="BeginTreatmentAsync" FormName="begin-treatment" class="clinical-form">
+                        <fieldset disabled="@(!_interactive || _saving)">
+                            <legend>@T["BeginTreatment"]</legend>
+                            <div class="field">
+                                <label for="treatment-location">@T["TreatmentLocation"]</label>
+                                <InputSelect id="treatment-location" @bind-Value="_lifecycle.LocationId">
+                                    <option value="">@T["SelectLocation"]</option>
+                                    @foreach (var location in _locations)
+                                    {
+                                        <option value="@location.Id">@T["LocationWithSpaces", location.Name, location.AvailableSpaces]</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <button type="submit" class="button" disabled="@(_lifecycle.LocationId is null)">@T["BeginTreatment"]</button>
+                        </fieldset>
+                    </EditForm>
+                }
+
+                @if (_episode.State == "InTreatment" && Session.Identity.Can(Permissions.PatientsDischarge))
+                {
+                    <EditForm Model="_lifecycle" OnValidSubmit="DischargeAsync" FormName="discharge-patient" class="clinical-form">
+                        <fieldset disabled="@(!_interactive || _saving)">
+                            <legend>@T["DischargePatient"]</legend>
+                            <div class="field field--wide"><label for="discharge-notes">@T["DischargeNotes"]</label><InputTextArea id="discharge-notes" @bind-Value="_lifecycle.Notes" /></div>
+                            <div class="identity-confirmation"><InputCheckbox id="confirm-discharge" @bind-Value="_endConfirmed" /><label for="confirm-discharge">@T["ConfirmDischarge", _episode.FirstName, _episode.LastName]</label></div>
+                            <button type="submit" class="button" disabled="@(!_endConfirmed)">@T["DischargePatient"]</button>
+                        </fieldset>
+                    </EditForm>
+                }
+            </section>
+        }
+
+        <section aria-labelledby="clinical-safety-heading">
+            <h2 id="clinical-safety-heading">@T["ClinicalSafety"]</h2>
+            <dl class="patient-identifiers">
+                <div><dt>@T["CarerPresence"]</dt><dd>@CarerStatus()</dd></div>
+                <div><dt>@T["SafeguardingConcern"]</dt><dd>@T[_episode.SafeguardingConcernRaised ? "Yes" : "No"]</dd></div>
+                <div><dt>@T["DeteriorationFlag"]</dt><dd>@T[_episode.DeteriorationFlagged ? "Yes" : "No"]</dd></div>
+                @if (_episode.RequiresPaediatricPathway)
+                {
+                    <div><dt>@T["AssignedClinicalStaff"]</dt><dd>@AssignedStaffStatus()</dd></div>
+                    <div><dt>@T["PaediatricTraining"]</dt><dd>@TrainingStatus()</dd></div>
+                }
+            </dl>
+
+            @if (_episode.RequiresPaediatricPathway && Session.Identity.Can(Permissions.PatientsCare))
+            {
+                <EditForm Model="_staffAssignment" OnValidSubmit="AssignSelfAsync" FormName="assign-clinical-staff" class="clinical-form">
+                    <fieldset disabled="@(!_interactive || _saving)">
+                        <legend>@T["PaediatricStaffAssignment"]</legend>
+                        <p>@T["AssignSelfDescription", Session.Identity.DisplayName, Session.Identity.ActingRole]</p>
+                        <div class="field field--checkbox">
+                            <InputCheckbox id="paediatric-trained" @bind-Value="_staffAssignment.PaediatricTrained" />
+                            <label for="paediatric-trained">@T["PaediatricTrainedDeclaration"]</label>
+                        </div>
+                        <button type="submit" class="button">@T["AssignMyself"]</button>
+                    </fieldset>
+                </EditForm>
+            }
+
+            @if (Session.Identity.Can(Permissions.PatientsCare))
+            {
+                <EditForm Model="_carer" OnValidSubmit="RecordCarerAsync" FormName="record-carer" class="clinical-form">
+                        <fieldset disabled="@(!_interactive || _saving)">
+                        <legend>@T["RecordCarerPresence"]</legend>
+                        <div class="form-grid">
+                            <div class="field field--checkbox">
+                                <InputCheckbox id="carer-present" @bind-Value="_carer.Present" />
+                                <label for="carer-present">@T["CarerPresent"]</label>
+                            </div>
+                            @if (_carer.Present)
+                            {
+                                <div class="field"><label for="carer-name">@T["CarerName"]</label><InputText id="carer-name" @bind-Value="_carer.Name" /></div>
+                                <div class="field"><label for="carer-relationship">@T["CarerRelationship"]</label><InputText id="carer-relationship" @bind-Value="_carer.Relationship" /></div>
+                            }
+                        </div>
+                        <button type="submit" class="button">@T["SaveCarerPresence"]</button>
+                    </fieldset>
+                </EditForm>
+            }
+
+            @if (Session.Identity.Can(Permissions.SafeguardingRaise))
+            {
+                <EditForm Model="_safeguarding" OnValidSubmit="RaiseSafeguardingAsync" FormName="raise-safeguarding" class="clinical-form">
+                        <fieldset disabled="@(!_interactive || _saving)">
+                        <legend>@T["RaiseSafeguardingConcern"]</legend>
+                        <div class="field field--wide"><label for="safeguarding-reason">@T["ConcernReason"]</label><InputTextArea id="safeguarding-reason" @bind-Value="_safeguarding.Reason" /></div>
+                        <button type="submit" class="button button--warning">@T["RaiseConcern"]</button>
+                    </fieldset>
+                </EditForm>
+            }
+
+            @if (Session.Identity.Can(Permissions.PatientsCare))
+            {
+                <EditForm Model="_deterioration" OnValidSubmit="FlagDeteriorationAsync" FormName="flag-deterioration" class="clinical-form">
+                    <fieldset disabled="@(!_interactive || _saving)">
+                        <legend>@T["FlagDeterioration"]</legend>
+                        <div class="field field--wide"><label for="deterioration-reason">@T["DeteriorationReason"]</label><InputTextArea id="deterioration-reason" @bind-Value="_deterioration.Reason" /></div>
+                        <button type="submit" class="button button--warning">@T["RaiseDeteriorationAlert"]</button>
+                    </fieldset>
+                </EditForm>
+            }
+        </section>
+
+        @if (Session.Identity.Can(Permissions.ObservationsRecord))
+        {
+            <section aria-labelledby="record-observation-heading">
+                <h2 id="record-observation-heading">@(_observation.SupersedesObservationId is null ? T["RecordObservation"] : T["CorrectObservation"])</h2>
+                <p>@T["ConfirmIdentityInstruction"]</p>
+
+                <EditForm @key="_observation" Model="_observation" OnValidSubmit="RecordObservationAsync" FormName="record-observation" class="clinical-form">
+                    <fieldset disabled="@(!_interactive || _saving)">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="observation-kind">@T["ObservationKind"]</label>
+                            <InputSelect id="observation-kind" @bind-Value="_observation.Kind">
+                                <option value="Routine">@T["Routine"]</option>
+                                <option value="Triage">@T["Triage"]</option>
+                                <option value="Concern">@T["Concern"]</option>
+                            </InputSelect>
+                        </div>
+                        <div class="field">
+                            <label for="observation-source">@T["ObservationSource"]</label>
+                            <InputSelect id="observation-source" @bind-Value="_observation.Source">
+                                <option value="">@T["NotRecorded"]</option>
+                                @foreach (var value in Enum.GetValues<ClinicalObservation.ObservationSource>())
+                                {
+                                    <option value="@value">@T[value.ToString()]</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="field">
+                            <label for="respiratory-rate">@T["RespiratoryRate"]</label>
+                            <InputNumber id="respiratory-rate" @bind-Value="_observation.RespiratoryRate" />
+                        </div>
+                        <div class="field">
+                            <label for="oxygen-saturation">@T["OxygenSaturation"]</label>
+                            <InputNumber id="oxygen-saturation" @bind-Value="_observation.OxygenSaturation" />
+                        </div>
+                        <div class="field field--checkbox">
+                            <InputCheckbox id="supplemental-oxygen" @bind-Value="_observation.OnSupplementalOxygen" />
+                            <label for="supplemental-oxygen">@T["SupplementalOxygen"]</label>
+                        </div>
+                        <div class="field">
+                            <label for="systolic-pressure">@T["SystolicPressure"]</label>
+                            <InputNumber id="systolic-pressure" @bind-Value="_observation.SystolicBloodPressure" />
+                        </div>
+                        <div class="field">
+                            <label for="pulse">@T["Pulse"]</label>
+                            <InputNumber id="pulse" @bind-Value="_observation.Pulse" />
+                        </div>
+                        <div class="field">
+                            <label for="consciousness">@T["Consciousness"]</label>
+                            <InputSelect id="consciousness" @bind-Value="_observation.Consciousness">
+                                <option value="">@T["NotRecorded"]</option>
+                                @foreach (var value in Enum.GetValues<Consciousness>())
+                                {
+                                    <option value="@value">@T[value.ToString()]</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="field">
+                            <label for="temperature">@T["Temperature"]</label>
+                            <InputNumber id="temperature" @bind-Value="_observation.Temperature" step="0.1" />
+                        </div>
+                        <div class="field">
+                            <label for="pain-score">@T["PainScore"]</label>
+                            <InputNumber id="pain-score" @bind-Value="_observation.PainScore" />
+                        </div>
+                        <div class="field">
+                            <label for="pain-scale">@T["PainScale"]</label>
+                            <InputSelect id="pain-scale" @bind-Value="_observation.PainScale">
+                                <option value="">@T["NotRecorded"]</option>
+                                @foreach (var value in Enum.GetValues<PainScale>())
+                                {
+                                    <option value="@value">@T[value.ToString()]</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="field">
+                            <label for="pain-location">@T["PainLocation"]</label>
+                            <InputText id="pain-location" @bind-Value="_observation.PainLocation" />
+                        </div>
+                        <div class="field">
+                            <label for="pain-character">@T["PainCharacter"]</label>
+                            <InputText id="pain-character" @bind-Value="_observation.PainCharacter" />
+                        </div>
+                        <div class="field">
+                            <label for="pain-onset">@T["PainOnset"]</label>
+                            <InputDate id="pain-onset" Type="InputDateType.DateTimeLocal" @bind-Value="_observation.PainOnsetAt" />
+                        </div>
+                        <div class="field field--wide"><h3>@T["SbarAssessment"]</h3></div>
+                        <div class="field field--wide"><label for="sbar-situation">@T["SbarSituation"]</label><InputTextArea id="sbar-situation" @bind-Value="_observation.SbarSituation" /></div>
+                        <div class="field field--wide"><label for="sbar-background">@T["SbarBackground"]</label><InputTextArea id="sbar-background" @bind-Value="_observation.SbarBackground" /></div>
+                        <div class="field field--wide"><label for="sbar-assessment">@T["SbarAssessmentSection"]</label><InputTextArea id="sbar-assessment" @bind-Value="_observation.SbarAssessment" /></div>
+                        <div class="field field--wide"><label for="sbar-recommendation">@T["SbarRecommendation"]</label><InputTextArea id="sbar-recommendation" @bind-Value="_observation.SbarRecommendation" /></div>
+                        @AssessmentFields("breathing", "Breathing", _observation.BreathingFinding,
+                            value => _observation.BreathingFinding = value, _observation.BreathingDetails,
+                            value => _observation.BreathingDetails = value)
+                        @AssessmentFields("circulation", "Circulation", _observation.CirculationFinding,
+                            value => _observation.CirculationFinding = value, _observation.CirculationDetails,
+                            value => _observation.CirculationDetails = value)
+                        @AssessmentFields("mobility", "Mobility", _observation.MobilityFinding,
+                            value => _observation.MobilityFinding = value, _observation.MobilityDetails,
+                            value => _observation.MobilityDetails = value)
+                        <div class="field field--wide">
+                            <label for="observation-notes">@T["Notes"]</label>
+                            <InputTextArea id="observation-notes" @bind-Value="_observation.Notes" />
+                        </div>
+                    </div>
+
+                    <div class="identity-confirmation">
+                        <InputCheckbox id="identity-confirmed" @bind-Value="_identityConfirmed" />
+                        <label for="identity-confirmed">@T["IdentityConfirmed", _episode.FirstName, _episode.LastName, _episode.DateOfBirth.ToString("d")]</label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="button" disabled="@(_saving || !_identityConfirmed)">@T["SaveObservation"]</button>
+                        @if (_observation.SupersedesObservationId is not null)
+                        {
+                            <button type="button" class="button button--quiet" @onclick="CancelCorrection">@T["CancelCorrection"]</button>
+                        }
+                    </div>
+                    </fieldset>
+                </EditForm>
+            </section>
+        }
+
+        <section aria-labelledby="observation-history-heading">
+            <h2 id="observation-history-heading">@T["ObservationHistory"]</h2>
+            @if (!Session.Identity.Can(Permissions.ObservationsRead))
+            {
+                <p>@T["ObservationHistoryNotPermitted"]</p>
+            }
+            else if (_observations.Count == 0)
+            {
+                <p class="empty">@T["NoObservations"]</p>
+            }
+            else
+            {
+                <div class="observation-list">
+                    @foreach (var observation in _observations.AsEnumerable().Reverse())
+                    {
+                        <article class="observation @(observation.SupersededByObservationId is null ? null : "observation--superseded")">
+                            <header>
+                                <h3>@T[observation.Kind] — @observation.RecordedAt.ToLocalTime().ToString("g")</h3>
+                                @if (observation.SupersededByObservationId is not null)
+                                {
+                                    <strong class="status-label">@T["Superseded"]</strong>
+                                }
+                                else if (observation.SupersedesObservationId is not null)
+                                {
+                                    <strong class="status-label">@T["Correction"]</strong>
+                                }
+                            </header>
+                            <dl class="observation-values">
+                                @ObservationValue(T["RespiratoryRate"], observation.RespiratoryRate)
+                                @ObservationValue(T["OxygenSaturation"], observation.OxygenSaturation, "%")
+                                @ObservationValue(T["SystolicPressure"], observation.SystolicBloodPressure, " mmHg")
+                                @ObservationValue(T["Pulse"], observation.Pulse, " bpm")
+                                @ObservationValue(T["Temperature"], observation.Temperature, " °C")
+                                @ObservationValue(T["Consciousness"], observation.Consciousness is null ? null : T[observation.Consciousness])
+                                @ObservationValue(T["PainScore"], observation.PainScore)
+                                @ObservationValue(T["PainLocation"], observation.PainLocation)
+                                @ObservationValue(T["PainCharacter"], observation.PainCharacter)
+                                @ObservationValue(T["PainOnset"], observation.PainOnsetAt?.ToLocalTime().ToString("g"))
+                                @ObservationValue(T["ObservationSource"], observation.Source is null ? null : T[observation.Source])
+                                @ObservationValue(T["Breathing"], FindingValue(observation.BreathingFinding, observation.BreathingDetails))
+                                @ObservationValue(T["Circulation"], FindingValue(observation.CirculationFinding, observation.CirculationDetails))
+                                @ObservationValue(T["Mobility"], FindingValue(observation.MobilityFinding, observation.MobilityDetails))
+                                @ObservationValue(T["EarlyWarningScore"], observation.EarlyWarningScore)
+                            </dl>
+                            @SbarHistory(observation)
+                            @if (!string.IsNullOrWhiteSpace(observation.Notes))
+                            {
+                                <p><strong>@T["Notes"]:</strong> @observation.Notes</p>
+                            }
+                            <p class="metadata">@T["RecordedBy", observation.RecordedByRole]</p>
+                            @if (observation.SupersededByObservationId is null && Session.Identity.Can(Permissions.ObservationsRecord))
+                            {
+                                <button type="button" class="button button--quiet" @onclick="() => BeginCorrection(observation)">@T["Correct"]</button>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+</RequirePermission>
+
+@code {
+    [Parameter] public Guid EpisodeId { get; set; }
+
+    private Betsi.Application.Queries.EpisodeDetail? _episode;
+    private IReadOnlyList<ObservationView> _observations = [];
+    private IReadOnlyList<LocationChoice> _locations = [];
+    private ObservationModel _observation = new();
+    private CarerModel _carer = new();
+    private ReasonModel _safeguarding = new();
+    private ReasonModel _deterioration = new();
+    private StaffAssignmentModel _staffAssignment = new();
+    private LifecycleModel _lifecycle = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _interactive;
+    private bool _identityConfirmed;
+    private bool _endConfirmed;
+    private bool _notFound;
+    private string? _error;
+    private string? _success;
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _interactive = true;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Session.EnsureAsync();
+        if (!Session.IsResolved || !Session.Identity.Can(Permissions.EpisodesRead))
+        {
+            _loading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var data = await Scope.RunReadAsync<EpisodePageData>("EpisodePage", EpisodeId, async services =>
+            {
+                var episode = await services.GetRequiredService<EpisodeQueries>()
+                    .GetEpisodeAsync(EpisodeId, CancellationToken.None);
+                if (episode is null)
+                    return new EpisodePageData(null, [], []);
+
+                var observations = Session.Identity.Can(Permissions.ObservationsRead)
+                    ? await services.GetRequiredService<ObservationQueries>()
+                        .GetHistoryAsync(EpisodeId, CancellationToken.None)
+                    : [];
+                var locations = Session.Identity.Can(Permissions.PatientsCare)
+                    ? await services.GetRequiredService<LocationQueries>().GetAvailableAsync(CancellationToken.None)
+                    : [];
+                return new EpisodePageData(episode, observations, locations);
+            });
+            _episode = data.Episode;
+            _observations = data.Observations;
+            _locations = data.Locations;
+            _notFound = _episode is null;
+            _error = null;
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RecordObservationAsync()
+    {
+        if (!_identityConfirmed)
+        {
+            _error = T["IdentityConfirmationRequired"];
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            await Scope.RunAsync(services => services.GetRequiredService<IMediator>().Send(new RecordObservationCommand
+            {
+                PatientEpisodeId = EpisodeId,
+                Kind = _observation.Kind,
+                RespiratoryRate = _observation.RespiratoryRate,
+                OxygenSaturation = _observation.OxygenSaturation,
+                OnSupplementalOxygen = _observation.OnSupplementalOxygen,
+                SystolicBloodPressure = _observation.SystolicBloodPressure,
+                Pulse = _observation.Pulse,
+                Consciousness = _observation.Consciousness,
+                Temperature = _observation.Temperature,
+                PainScore = _observation.PainScore,
+                PainScale = _observation.PainScale,
+                PainLocation = _observation.PainLocation,
+                PainCharacter = _observation.PainCharacter,
+                PainOnsetAt = _observation.PainOnsetAt,
+                Source = _observation.Source,
+                SbarSituation = _observation.SbarSituation,
+                SbarBackground = _observation.SbarBackground,
+                SbarAssessment = _observation.SbarAssessment,
+                SbarRecommendation = _observation.SbarRecommendation,
+                BreathingFinding = _observation.BreathingFinding,
+                BreathingDetails = _observation.BreathingDetails,
+                CirculationFinding = _observation.CirculationFinding,
+                CirculationDetails = _observation.CirculationDetails,
+                MobilityFinding = _observation.MobilityFinding,
+                MobilityDetails = _observation.MobilityDetails,
+                Notes = _observation.Notes,
+                SupersedesObservationId = _observation.SupersedesObservationId,
+                ExpectedVersion = _observation.ExpectedVersion
+            }));
+
+            _observation = new();
+            _identityConfirmed = false;
+            _success = T["ObservationSaved"];
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void BeginCorrection(ObservationView source)
+    {
+        _observation = new ObservationModel
+        {
+            Kind = source.Kind,
+            RespiratoryRate = source.RespiratoryRate,
+            OxygenSaturation = source.OxygenSaturation,
+            OnSupplementalOxygen = source.OnSupplementalOxygen,
+            SystolicBloodPressure = source.SystolicBloodPressure,
+            Pulse = source.Pulse,
+            Consciousness = Enum.TryParse<Consciousness>(source.Consciousness, out var consciousness) ? consciousness : null,
+            Temperature = source.Temperature,
+            PainScore = source.PainScore,
+            PainScale = Enum.TryParse<PainScale>(source.PainScale, out var painScale) ? painScale : null,
+            PainLocation = source.PainLocation,
+            PainCharacter = source.PainCharacter,
+            PainOnsetAt = source.PainOnsetAt,
+            Source = Enum.TryParse<ClinicalObservation.ObservationSource>(source.Source, out var observationSource) ? observationSource : null,
+            SbarSituation = source.SbarSituation,
+            SbarBackground = source.SbarBackground,
+            SbarAssessment = source.SbarAssessment,
+            SbarRecommendation = source.SbarRecommendation,
+            BreathingFinding = ParseFinding(source.BreathingFinding),
+            BreathingDetails = source.BreathingDetails,
+            CirculationFinding = ParseFinding(source.CirculationFinding),
+            CirculationDetails = source.CirculationDetails,
+            MobilityFinding = ParseFinding(source.MobilityFinding),
+            MobilityDetails = source.MobilityDetails,
+            Notes = source.Notes,
+            SupersedesObservationId = source.Id,
+            ExpectedVersion = source.Version
+        };
+        _identityConfirmed = false;
+        _success = null;
+    }
+
+    private void CancelCorrection()
+    {
+        _observation = new();
+        _identityConfirmed = false;
+    }
+
+    private string CarerStatus() => _episode?.CarerPresent switch
+    {
+        true => string.IsNullOrWhiteSpace(_episode.CarerRelationship)
+            ? _episode.CarerName ?? T["Present"]
+            : $"{_episode.CarerName} ({_episode.CarerRelationship})",
+        false => T["NotPresent"],
+        _ => T["NotRecorded"]
+    };
+
+    private string AssignedStaffStatus() => _episode?.AssignedStaffName is { Length: > 0 } name
+        ? $"{name} ({_episode.AssignedStaffRole})"
+        : T["NotAssigned"];
+
+    private string TrainingStatus() => _episode?.AssignedStaffPaediatricTrained switch
+    {
+        true => T["TrainingRecorded"],
+        false => T["TrainingNotRecorded"],
+        _ => T["NotAssigned"]
+    };
+
+    private async Task AssignSelfAsync() => await RunClinicalActionAsync(
+        new AssignClinicalStaffCommand
+        {
+            PatientEpisodeId = EpisodeId,
+            ExpectedVersion = _episode!.Version,
+            AssignedStaffActorId = Session.Identity.ActorId,
+            AssignedStaffName = Session.Identity.DisplayName,
+            AssignedStaffRole = Session.Identity.ActingRole,
+            PaediatricTrained = _staffAssignment.PaediatricTrained
+        }, "StaffAssignmentSaved", () => _staffAssignment = new());
+
+    private async Task RecordCarerAsync() => await RunClinicalActionAsync(
+        new RecordCarerPresenceCommand
+        {
+            PatientEpisodeId = EpisodeId,
+            CarerPresent = _carer.Present,
+            CarerName = _carer.Present ? _carer.Name : null,
+            CarerRelationship = _carer.Present ? _carer.Relationship : null
+        }, "CarerPresenceSaved", () => _carer = new());
+
+    private async Task RaiseSafeguardingAsync() => await RunClinicalActionAsync(
+        new RaiseSafeguardingConcernCommand { PatientEpisodeId = EpisodeId, Reason = _safeguarding.Reason },
+        "SafeguardingRaised", () => _safeguarding = new());
+
+    private async Task FlagDeteriorationAsync() => await RunClinicalActionAsync(
+        new FlagPatientDeteriorationCommand { PatientEpisodeId = EpisodeId, Reason = _deterioration.Reason },
+        "DeteriorationRaised", () => _deterioration = new());
+
+    private async Task BeginTriageAsync() => await RunClinicalActionAsync(
+        new BeginPatientTriageCommand { PatientEpisodeId = EpisodeId, ExpectedVersion = _episode!.Version },
+        "TriageStarted", () => { });
+
+    private async Task CompleteTriageAsync() => await RunClinicalActionAsync(
+        new CompletePatientTriageCommand { PatientEpisodeId = EpisodeId, ExpectedVersion = _episode!.Version },
+        "TriageCompleted", () => { });
+
+    private async Task BeginTreatmentAsync() => await RunClinicalActionAsync(
+        new BeginPatientTreatmentCommand
+        {
+            PatientEpisodeId = EpisodeId,
+            ExpectedVersion = _episode!.Version,
+            LocationId = _lifecycle.LocationId!.Value
+        }, "TreatmentStarted", () => _lifecycle = new());
+
+    private async Task DischargeAsync()
+    {
+        if (!_endConfirmed)
+            return;
+        await RunClinicalActionAsync(
+            new DischargePatientCommand
+            {
+                PatientEpisodeId = EpisodeId,
+                ExpectedVersion = _episode!.Version,
+                DischargeNotes = _lifecycle.Notes
+            }, "PatientDischarged", () => { _lifecycle = new(); _endConfirmed = false; });
+    }
+
+    private async Task RunClinicalActionAsync(IRequest<CommandResult> command, string successKey, Action reset)
+    {
+        _saving = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            await Scope.RunAsync(services => services.GetRequiredService<IMediator>().Send(command));
+            reset();
+            _success = T[successKey];
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private RenderFragment ObservationValue(string label, object? value, string suffix = "") => builder =>
+    {
+        if (value is null)
+            return;
+        builder.OpenElement(0, "div");
+        builder.OpenElement(1, "dt"); builder.AddContent(2, label); builder.CloseElement();
+        builder.OpenElement(3, "dd"); builder.AddContent(4, $"{value}{suffix}"); builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    private RenderFragment AssessmentFields(string id, string labelKey,
+        ClinicalObservation.AssessmentFinding? finding,
+        Action<ClinicalObservation.AssessmentFinding?> setFinding,
+        string? details, Action<string?> setDetails) => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "field");
+        builder.OpenElement(2, "label"); builder.AddAttribute(3, "for", $"{id}-finding");
+        builder.AddContent(4, T[labelKey]); builder.CloseElement();
+        builder.OpenComponent<InputSelect<ClinicalObservation.AssessmentFinding?>>(5);
+        builder.AddAttribute(6, "id", $"{id}-finding");
+        builder.AddAttribute(7, "Value", finding);
+        builder.AddAttribute(8, "ValueChanged", EventCallback.Factory.Create(this, setFinding));
+        builder.AddAttribute(9, "ValueExpression",
+            (System.Linq.Expressions.Expression<Func<ClinicalObservation.AssessmentFinding?>>)(() => finding));
+        builder.AddAttribute(10, "ChildContent", (RenderFragment)(options =>
+        {
+            options.OpenElement(0, "option"); options.AddAttribute(1, "value", "");
+            options.AddContent(2, T["NotRecorded"]); options.CloseElement();
+            foreach (var value in Enum.GetValues<ClinicalObservation.AssessmentFinding>())
+            {
+                options.OpenElement(3, "option"); options.AddAttribute(4, "value", value);
+                options.AddContent(5, T[value.ToString()]); options.CloseElement();
+            }
+        }));
+        builder.CloseComponent(); builder.CloseElement();
+        builder.OpenElement(11, "div"); builder.AddAttribute(12, "class", "field");
+        builder.OpenElement(13, "label"); builder.AddAttribute(14, "for", $"{id}-details");
+        builder.AddContent(15, T["AssessmentDetails", T[labelKey]]); builder.CloseElement();
+        builder.OpenComponent<InputTextArea>(16); builder.AddAttribute(17, "id", $"{id}-details");
+        builder.AddAttribute(18, "Value", details);
+        builder.AddAttribute(19, "ValueChanged", EventCallback.Factory.Create(this, setDetails));
+        builder.AddAttribute(20, "ValueExpression",
+            (System.Linq.Expressions.Expression<Func<string?>>)(() => details)); builder.CloseComponent();
+        builder.CloseElement();
+    };
+
+    private RenderFragment SbarHistory(ObservationView observation) => builder =>
+    {
+        var sections = new[]
+        {
+            (T["SbarSituation"].Value, observation.SbarSituation),
+            (T["SbarBackground"].Value, observation.SbarBackground),
+            (T["SbarAssessmentSection"].Value, observation.SbarAssessment),
+            (T["SbarRecommendation"].Value, observation.SbarRecommendation)
+        }.Where(section => !string.IsNullOrWhiteSpace(section.Item2)).ToArray();
+        if (sections.Length == 0) return;
+        builder.OpenElement(0, "section"); builder.AddAttribute(1, "class", "observation-sbar");
+        builder.OpenElement(2, "h4"); builder.AddContent(3, T["SbarAssessment"]); builder.CloseElement();
+        foreach (var section in sections)
+        {
+            builder.OpenElement(4, "p"); builder.OpenElement(5, "strong");
+            builder.AddContent(6, $"{section.Item1}: "); builder.CloseElement();
+            builder.AddContent(7, section.Item2); builder.CloseElement();
+        }
+        builder.CloseElement();
+    };
+
+    private string? FindingValue(string? finding, string? details) => finding is null
+        ? details
+        : string.IsNullOrWhiteSpace(details) ? T[finding] : $"{T[finding]} — {details}";
+
+    private static ClinicalObservation.AssessmentFinding? ParseFinding(string? value) =>
+        Enum.TryParse<ClinicalObservation.AssessmentFinding>(value, out var parsed) ? parsed : null;
+
+    private sealed class ObservationModel
+    {
+        public string Kind { get; set; } = "Routine";
+        public int? RespiratoryRate { get; set; }
+        public int? OxygenSaturation { get; set; }
+        public bool OnSupplementalOxygen { get; set; }
+        public int? SystolicBloodPressure { get; set; }
+        public int? Pulse { get; set; }
+        public Consciousness? Consciousness { get; set; }
+        public decimal? Temperature { get; set; }
+        public int? PainScore { get; set; }
+        public PainScale? PainScale { get; set; }
+        public string? PainLocation { get; set; }
+        public string? PainCharacter { get; set; }
+        public DateTime? PainOnsetAt { get; set; }
+        public ClinicalObservation.ObservationSource? Source { get; set; }
+        public string? SbarSituation { get; set; }
+        public string? SbarBackground { get; set; }
+        public string? SbarAssessment { get; set; }
+        public string? SbarRecommendation { get; set; }
+        public ClinicalObservation.AssessmentFinding? BreathingFinding { get; set; }
+        public string? BreathingDetails { get; set; }
+        public ClinicalObservation.AssessmentFinding? CirculationFinding { get; set; }
+        public string? CirculationDetails { get; set; }
+        public ClinicalObservation.AssessmentFinding? MobilityFinding { get; set; }
+        public string? MobilityDetails { get; set; }
+        public string? Notes { get; set; }
+        public Guid? SupersedesObservationId { get; set; }
+        public int? ExpectedVersion { get; set; }
+    }
+
+    private sealed class CarerModel
+    {
+        public bool Present { get; set; }
+        public string? Name { get; set; }
+        public string? Relationship { get; set; }
+    }
+
+    private sealed class ReasonModel
+    {
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    private sealed class StaffAssignmentModel
+    {
+        public bool PaediatricTrained { get; set; }
+    }
+
+    private sealed class LifecycleModel
+    {
+        public Guid? LocationId { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    private sealed record EpisodePageData(
+        Betsi.Application.Queries.EpisodeDetail? Episode,
+        IReadOnlyList<ObservationView> Observations,
+        IReadOnlyList<LocationChoice> Locations);
+}

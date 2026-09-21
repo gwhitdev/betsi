@@ -71,8 +71,20 @@ Per screen, by hand:
 
 | Item | State |
 |---|---|
-| Welsh reviewed by a Welsh speaker | ⛔ Not done — see §3 |
-| Automated axe checks in CI | ⛔ Not built. Needs a headless browser in the pipeline |
-| Screen-reader pass | ⛔ Not done |
-| Accessibility statement (a legal requirement for a public-sector service) | ⛔ Not written. It must be honest about §3 and about anything found in §5 |
+| Welsh reviewed by a Welsh speaker | Deferred at user's request, 2026-09-18 — see §3 |
+| Automated axe checks in CI | Implemented in the browser job; [local results and covered states](../N2-VERIFICATION.md). Remote CI run not yet evidenced |
+| Screen-reader and physical device pass | Deferred at user's request, 2026-09-18 |
+| Accessibility statement | [Draft](../ACCESSIBILITY.md) written; site-specific review/contact details and publication remain open |
 | Contrast, focus, target size, reduced motion, semantic tables | ✅ Built into `app.css` and the components from the first screen |
+
+## 7. Deferred review record
+
+Use this record when the human reviews resume. Do not mark a scenario passed from an axe
+report or browser simulation alone.
+
+| Reviewer/date | OS, browser, device/assistive technology | Scenario | Result and issue | Retest evidence |
+|---|---|---|---|---|
+| Pending | Welsh NHS terminology reviewer | Both resource files, role/status/error wording and displayed boards | Deferred | Pending |
+| Pending | NVDA or VoiceOver | Read table headers/cells; hear live updates; identify each patient's action | Deferred | Pending |
+| Pending | Physical keyboard, browser zoom | All actions, skip link/focus order, 200%/400% zoom | Deferred | Pending |
+| Pending | Ward tablet | Sleep/wake with a missed change; touch scrolling; session expiry | Deferred | Pending |

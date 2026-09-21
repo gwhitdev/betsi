@@ -1,6 +1,7 @@
 namespace Betsi.Tests.Infrastructure;
 
 using Betsi.Application.Queries;
+using Betsi.Application.Commands.Handlers;
 using Betsi.Domain.Aggregates;
 using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
@@ -149,7 +150,7 @@ public sealed class WaitingBoardLoadTests : IAsyncLifetime
         Assert.SkipWhen(_skipReason is not null, _skipReason ?? string.Empty);
 
         await using var context = NewContext();
-        var queries = new EpisodeQueries(context, TimeProvider.System);
+        var queries = new EpisodeQueries(context, TimeProvider.System, new ClinicalOptions());
 
         string? cursor = null;
         var pages = 0;
@@ -182,7 +183,7 @@ public sealed class WaitingBoardLoadTests : IAsyncLifetime
         // A context per query, as a request would have: reusing one would measure a warm change
         // tracker rather than what a clinician's browser asks for.
         await using var context = NewContext();
-        var queries = new EpisodeQueries(context, TimeProvider.System);
+        var queries = new EpisodeQueries(context, TimeProvider.System, new ClinicalOptions());
 
         var stopwatch = Stopwatch.StartNew();
         var page = await queries.GetWaitingBoardAsync(new WaitingBoardFilter(), Ct);

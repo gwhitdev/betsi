@@ -76,14 +76,22 @@ public sealed class BoardNotifier : IBoardNotifier
     {
         try
         {
+            // A display nudge must never hold a committed clinical or configuration command
+            // open indefinitely. Reconciliation on reconnect remains the source of truth.
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(1));
             await _hub.Clients.Group(BoardHub.GroupFor(tenantId))
-                .SendAsync(BoardHub.ChangedMethod, reason, cancellationToken);
+                .SendAsync(BoardHub.ChangedMethod, reason, timeout.Token);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // A board that misses a nudge is stale until its next one; a command that fails
             // because a websocket did is a clinical action lost to a display concern.
             _logger.LogWarning(exception, "Could not notify boards for tenant {TenantId}", tenantId);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(exception, "Timed out notifying boards for tenant {TenantId}", tenantId);
         }
     }
 }

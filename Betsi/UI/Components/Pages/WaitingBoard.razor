@@ -39,6 +39,7 @@ else
 
     @* A table, because this is tabular data: a screen reader announces the column when it
        reads a cell, which a grid of divs cannot do. *@
+    <div class="board-scroll" tabindex="0" role="region" aria-label="@T["WaitingTitle"]">
     <table class="board board--waiting">
         <caption class="visually-hidden">@T["WaitingTitle"]</caption>
         <thead>
@@ -54,8 +55,8 @@ else
             @foreach (var row in _rows)
             {
                 <tr class="@(row.AcknowledgementOverdue ? "row--overdue" : null)">
-                    <td>@row.Name</td>
-                    <td>@row.State</td>
+                    <td><a href="@UiRoutes.Episode(row.EpisodeId)">@row.Name</a></td>
+                    <td>@T[row.State]</td>
                     <td>@row.ArrivedAt.ToLocalTime().ToString("HH:mm")</td>
                     <td class="waited">@Duration(row.MinutesWaiting)</td>
                     <td>
@@ -72,6 +73,7 @@ else
             }
         </tbody>
     </table>
+    </div>
 
     @if (_page.NextCursor is not null)
     {

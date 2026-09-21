@@ -2,6 +2,7 @@
 @page "/escalations"
 @using Betsi.Application.Commands
 @using Betsi.Application.Escalations
+@using Betsi.Domain.Aggregates
 @using Betsi.Security
 @using MediatR
 @attribute [Authorize]
@@ -21,6 +22,10 @@
 @if (_error is not null)
 {
     <p class="notice notice--error" role="alert">@_error</p>
+}
+@if (_actionError is not null)
+{
+    <p class="notice notice--error" role="alert">@_actionError</p>
 }
 
 @if (_board is null)
@@ -56,6 +61,7 @@ else
         }
         else
         {
+            <div class="board-scroll" tabindex="0" role="region" aria-label="@T["AwaitingAcknowledgement"]">
             <table class="board">
                 <caption class="visually-hidden">@T["AwaitingAcknowledgement"]</caption>
                 <thead>
@@ -65,14 +71,15 @@ else
                         <th scope="col">@T["ColumnWaited"]</th>
                         <th scope="col">@T["ColumnResponsible"]</th>
                         <th scope="col">@T["ColumnDue"]</th>
-                        <th scope="col"><span class="visually-hidden">@T["Acknowledge"]</span></th>
+                        <th scope="col">@T["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var card in _board.AwaitingAcknowledgement)
                     {
+                        var action = ActionFor(card.Id);
                         <tr class="@(card.AcknowledgementOverdue ? "row--overdue" : null)">
-                            <td>@PatientName(card)</td>
+                            <td>@PatientLink(card)</td>
                             <td>@(card.TierLevel?.ToString() ?? "—")</td>
                             <td>@Duration(card.WaitedMinutesWhenRaised ?? card.MinutesSinceRaised)</td>
                             <td>@card.ResponsibleRole</td>
@@ -97,24 +104,37 @@ else
                                         @T["Acknowledge"]
                                         <span class="visually-hidden">— @PatientName(card)</span>
                                     </button>
+                                    <details class="inline-action">
+                                        <summary>@T["Reassign"]</summary>
+                                        <fieldset disabled="@(!_interactive || _busy)">
+                                            <label for="@($"role-{card.Id}")">@T["ResponsibleRole"]</label>
+                                            <input id="@($"role-{card.Id}")" @bind="action.ResponsibleRole" @bind:event="oninput" />
+                                            <label for="@($"reason-{card.Id}")">@T["ReassignmentReason"]</label>
+                                            <textarea id="@($"reason-{card.Id}")" @bind="action.Reason" @bind:event="oninput"></textarea>
+                                            <button type="button" class="button button--quiet" @onclick="() => ReassignAsync(card, action)">@T["Reassign"]</button>
+                                        </fieldset>
+                                    </details>
+                                    <button type="button" class="link-button" @onclick="() => ShowHistoryAsync(card.Id)">@T["ViewHistory"]</button>
                                 }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
+            </div>
         }
     </section>
 
     <section aria-labelledby="active-heading">
-        <h2 id="active-heading">@T["ActiveEscalations"] <span class="count">@_board.Active.Count</span></h2>
+        <h2 id="active-heading">@T["ActiveEscalations"] <span class="count">@ActiveCards.Count</span></h2>
 
-        @if (_board.Active.Count == 0)
+        @if (ActiveCards.Count == 0)
         {
             <p>@T["NothingActive"]</p>
         }
         else
         {
+            <div class="board-scroll" tabindex="0" role="region" aria-label="@T["ActiveEscalations"]">
             <table class="board">
                 <caption class="visually-hidden">@T["ActiveEscalations"]</caption>
                 <thead>
@@ -123,14 +143,15 @@ else
                         <th scope="col">@T["ColumnTier"]</th>
                         <th scope="col">@T["ColumnResponsible"]</th>
                         <th scope="col">@T["ColumnRaised"]</th>
-                        <th scope="col"><span class="visually-hidden">@T["Resolve"]</span></th>
+                        <th scope="col">@T["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var card in _board.Active)
+                    @foreach (var card in ActiveCards)
                     {
+                        var action = ActionFor(card.Id);
                         <tr>
-                            <td>@PatientName(card)</td>
+                            <td>@PatientLink(card)</td>
                             <td>@(card.TierLevel?.ToString() ?? "—")</td>
                             <td>@card.ResponsibleRole</td>
                             <td>@Duration(card.MinutesSinceRaised)</td>
@@ -143,12 +164,24 @@ else
                                         @T["Resolve"]
                                         <span class="visually-hidden">— @PatientName(card)</span>
                                     </button>
+                                    <details class="inline-action">
+                                        <summary>@T["Reassign"]</summary>
+                                        <fieldset disabled="@(!_interactive || _busy)">
+                                            <label for="@($"role-{card.Id}")">@T["ResponsibleRole"]</label>
+                                            <input id="@($"role-{card.Id}")" @bind="action.ResponsibleRole" @bind:event="oninput" />
+                                            <label for="@($"reason-{card.Id}")">@T["ReassignmentReason"]</label>
+                                            <textarea id="@($"reason-{card.Id}")" @bind="action.Reason" @bind:event="oninput"></textarea>
+                                            <button type="button" class="button button--quiet" @onclick="() => ReassignAsync(card, action)">@T["Reassign"]</button>
+                                        </fieldset>
+                                    </details>
+                                    <button type="button" class="link-button" @onclick="() => ShowHistoryAsync(card.Id)">@T["ViewHistory"]</button>
                                 }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
+            </div>
         }
     </section>
 
@@ -161,6 +194,7 @@ else
         }
         else
         {
+            <div class="board-scroll" tabindex="0" role="region" aria-label="@T["FollowUpExceptions"]">
             <table class="board">
                 <caption class="visually-hidden">@T["FollowUpExceptions"]</caption>
                 <thead>
@@ -169,22 +203,64 @@ else
                         <th scope="col">@T["ColumnOwner"]</th>
                         <th scope="col">@T["ColumnDue"]</th>
                         <th scope="col">@T["ColumnRaised"]</th>
+                        <th scope="col">@T["Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var exception in _board.FollowUpExceptions)
                     {
+                        var review = ReviewFor(exception.Id);
                         <tr class="row--overdue">
-                            <td>@(exception.Patient?.Name ?? "—")</td>
+                            <td>@FollowUpPatientLink(exception)</td>
                             <td>@exception.OwnerRole</td>
                             <td>@Local(exception.MissedDeadline)</td>
                             <td>@Duration(exception.MinutesOpen)</td>
+                            <td>
+                                @if (Session.Identity.Can(Permissions.EscalationsRespond))
+                                {
+                                    <details class="inline-action">
+                                        <summary>@T["CloseFollowUp"]</summary>
+                                        <fieldset disabled="@(!_interactive || _busy)">
+                                            <label for="@($"outcome-{exception.Id}")">@T["ReviewOutcome"]</label>
+                                            <select id="@($"outcome-{exception.Id}")" @bind="review.Outcome">
+                                                @foreach (var outcome in Enum.GetValues<FollowUpException.ReviewOutcome>()) { <option value="@outcome">@T[outcome.ToString()]</option> }
+                                            </select>
+                                            <label for="@($"review-{exception.Id}")">@T["ReviewNotes"]</label>
+                                            <textarea id="@($"review-{exception.Id}")" @bind="review.Notes" @bind:event="oninput"></textarea>
+                                            <button type="button" class="button" @onclick="() => CloseFollowUpAsync(exception, review)">@T["CloseFollowUp"]</button>
+                                        </fieldset>
+                                    </details>
+                                    <button type="button" class="link-button" @onclick="() => ShowHistoryAsync(exception.EscalationId)">@T["ViewHistory"]</button>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
+            </div>
         }
     </section>
+
+    <section aria-labelledby="history-heading">
+        <h2 id="history-heading">@T["RecentEscalationHistory"] <span class="count">@_board.History.Count</span></h2>
+        @if (_board.History.Count == 0) { <p>@T["NoEscalationHistory"]</p> }
+        else
+        {
+            <div class="board-scroll" tabindex="0" role="region" aria-label="@T["RecentEscalationHistory"]">
+                <table class="board"><thead><tr><th>@T["ColumnPatient"]</th><th>@T["ColumnState"]</th><th>@T["ColumnResponsible"]</th><th>@T["ColumnRaised"]</th><th>@T["Actions"]</th></tr></thead>
+                <tbody>@foreach (var card in _board.History) { <tr><td>@PatientLink(card)</td><td>@T[card.State]</td><td>@card.ResponsibleRole</td><td>@Local(card.CreatedAt)</td><td><button type="button" class="link-button" @onclick="() => ShowHistoryAsync(card.Id)">@T["ViewHistory"]</button></td></tr> }</tbody></table>
+            </div>
+        }
+    </section>
+
+    @if (_audit is not null)
+    {
+        <section class="audit-trail" aria-labelledby="audit-heading">
+            <h2 id="audit-heading">@T["EscalationAuditTrail"]</h2>
+            <table class="board"><thead><tr><th>@T["ColumnTime"]</th><th>@T["ColumnEvent"]</th><th>@T["ColumnActorRole"]</th></tr></thead>
+            <tbody>@foreach (var entry in _audit) { <tr><td>@entry.OccurredAt.ToLocalTime().ToString("g")</td><td>@T[entry.EventType]</td><td>@entry.ActorRole</td></tr> }</tbody></table>
+        </section>
+    }
 }
 
 </RequirePermission>
@@ -192,7 +268,22 @@ else
 @code {
     private EscalationBoard? _board;
     private string? _error;
+    private string? _actionError;
     private bool _busy;
+    private bool _interactive;
+    private IReadOnlyList<AuditTrailEntry>? _audit;
+    private readonly Dictionary<Guid, EscalationActionModel> _actions = [];
+    private readonly Dictionary<Guid, FollowUpReviewModel> _reviews = [];
+    // The API's Active list includes every unresolved escalation. The UI's second section
+    // is for those already acknowledged; a Created escalation cannot be resolved yet.
+    private IReadOnlyList<EscalationCard> ActiveCards => _board?.Active
+        .Where(card => card.State is "Acknowledged" or "Escalated").ToList() ?? [];
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) { _interactive = true; StateHasChanged(); }
+        return Task.CompletedTask;
+    }
 
     private async Task LoadAsync()
     {
@@ -221,6 +312,23 @@ else
     private Task ResolveAsync(EscalationCard card) =>
         SendAsync(new ResolveEscalationCommand { EscalationId = card.Id });
 
+    private Task ReassignAsync(EscalationCard card, EscalationActionModel action) =>
+        SendAsync(new ReassignEscalationCommand { EscalationId = card.Id, ResponsibleRole = action.ResponsibleRole, Reason = action.Reason });
+
+    private Task CloseFollowUpAsync(FollowUpExceptionCard exception, FollowUpReviewModel review) =>
+        SendAsync(new CloseFollowUpExceptionCommand { FollowUpExceptionId = exception.Id, Outcome = review.Outcome, ReviewNotes = review.Notes });
+
+    private async Task ShowHistoryAsync(Guid escalationId)
+    {
+        try
+        {
+            _audit = await Scope.RunReadAsync("EscalationAuditTrail", escalationId, services =>
+                services.GetRequiredService<EscalationQueries>().GetAuditTrailAsync(escalationId, CancellationToken.None));
+            _actionError = null;
+        }
+        catch (Exception) { _actionError = T["ActionNotCompleted"]; }
+    }
+
     /// <summary>
     /// Every action goes through the same audited, validated command the API exposes. The UI
     /// has no privileged path of its own: permissions, licence rules and the audit trail apply
@@ -229,14 +337,16 @@ else
     private async Task SendAsync(ICommand command)
     {
         _busy = true;
+        _actionError = null;
         try
         {
             await Scope.RunAsync(services => services.GetRequiredService<ISender>().Send(command));
             _error = null;
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            _error = T["ActionFailed", exception.Message];
+            // Refreshing the data must not erase the failed action's feedback.
+            _actionError = T["ActionNotCompleted"];
         }
         finally
         {
@@ -250,8 +360,35 @@ else
 
     private string PatientName(EscalationCard card) => card.Patient?.Name ?? "—";
 
+    private RenderFragment PatientLink(EscalationCard card) => builder =>
+    {
+        if (card.Patient is not { } patient) { builder.AddContent(0, "—"); return; }
+        builder.OpenElement(0, "a"); builder.AddAttribute(1, "href", UiRoutes.Episode(patient.EpisodeId)); builder.AddContent(2, patient.Name); builder.CloseElement();
+    };
+
+    private RenderFragment FollowUpPatientLink(FollowUpExceptionCard exception) => builder =>
+    {
+        if (exception.Patient is not { } patient) { builder.AddContent(0, "—"); return; }
+        builder.OpenElement(0, "a"); builder.AddAttribute(1, "href", UiRoutes.Episode(patient.EpisodeId)); builder.AddContent(2, patient.Name); builder.CloseElement();
+    };
+
+    private EscalationActionModel ActionFor(Guid id)
+    {
+        if (!_actions.TryGetValue(id, out var action)) _actions[id] = action = new();
+        return action;
+    }
+
+    private FollowUpReviewModel ReviewFor(Guid id)
+    {
+        if (!_reviews.TryGetValue(id, out var review)) _reviews[id] = review = new();
+        return review;
+    }
+
     private static string Local(DateTime utc) => utc.ToLocalTime().ToString("HH:mm");
 
     private string Duration(int minutes) =>
         minutes < 60 ? T["Minutes", minutes] : T["HoursMinutes", minutes / 60, minutes % 60];
+
+    private sealed class EscalationActionModel { public string ResponsibleRole { get; set; } = string.Empty; public string Reason { get; set; } = string.Empty; }
+    private sealed class FollowUpReviewModel { public FollowUpException.ReviewOutcome Outcome { get; set; } = FollowUpException.ReviewOutcome.AcknowledgedLate; public string Notes { get; set; } = string.Empty; }
 }

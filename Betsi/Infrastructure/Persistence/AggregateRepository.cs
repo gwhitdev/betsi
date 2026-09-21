@@ -98,7 +98,18 @@ public sealed class UnitOfWork : IUnitOfWork
         foreach (var aggregate in aggregates)
             AggregatePersistence.StageEvents(_context, _tenantContext.TenantId, aggregate);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 } sql &&
+            sql.Message.Contains("IX_ClinicalObservations_SupersedesObservationId", StringComparison.Ordinal))
+        {
+            // SQL Server may insert the replacement before checking the original's version.
+            // The unique correction index detects the same race and must also return 409.
+            throw new DbUpdateConcurrencyException("The observation was corrected by another writer.", exception);
+        }
     }
 }
 

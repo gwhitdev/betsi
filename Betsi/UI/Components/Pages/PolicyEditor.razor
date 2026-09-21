@@ -1,0 +1,234 @@
+@page "/policy"
+@using Betsi.Application.Commands
+@using Betsi.Application.Escalations
+@using Betsi.Domain.Aggregates
+@using Betsi.Security
+@using MediatR
+@attribute [Authorize]
+@inject UiScopeRunner Scope
+@inject UiSession Session
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["PolicyTitle"]</PageTitle>
+
+<RequirePermission Permission="@Permissions.PolicyRead">
+    <h1>@T["PolicyTitle"]</h1>
+    <p class="lede">@T["PolicySummary"]</p>
+
+    @if (_error is not null) { <p class="notice notice--error" role="alert">@_error</p> }
+    @if (_success is not null) { <p class="notice notice--success" role="status">@_success</p> }
+
+    @if (_overview is null)
+    {
+        <p>@T["Loading"]</p>
+    }
+    else
+    {
+        @if (_overview.InForce is null)
+        {
+            <div class="notice notice--warning"><h2>@T["NoPolicyTitle"]</h2><p>@T["NoPolicyBody"]</p></div>
+        }
+        else
+        {
+            <section aria-labelledby="in-force-heading">
+                <h2 id="in-force-heading">@T["PolicyInForceHeading"]</h2>
+                <PolicyRevisionCard Revision="_overview.InForce" />
+            </section>
+        }
+
+        @if (Session.Identity.Can(Permissions.PolicyPropose))
+        {
+            <section aria-labelledby="propose-policy-heading">
+                <h2 id="propose-policy-heading">@T["ProposePolicy"]</h2>
+                <EditForm Model="_proposal" OnSubmit="ProposeAsync" FormName="propose-policy" class="clinical-form">
+                    <fieldset disabled="@(!_interactive || _busy)">
+                        <div class="field field--checkbox">
+                            <InputCheckbox id="policy-enabled" @bind-Value="_proposal.Enabled" />
+                            <label for="policy-enabled">@T["AutomaticEscalationEnabled"]</label>
+                        </div>
+                        @if (_proposal.Enabled)
+                        {
+                            <div class="tier-editor">
+                                @for (var index = 0; index < _proposal.Tiers.Count; index++)
+                                {
+                                    var tierIndex = index;
+                                    var tier = _proposal.Tiers[index];
+                                    <fieldset class="tier-fields">
+                                        <legend>@T["TierNumber", index + 1]</legend>
+                                        <div class="form-grid">
+                                            <div class="field"><label for="@($"threshold-{tierIndex}")">@T["ThresholdMinutes"]</label><InputNumber id="@($"threshold-{tierIndex}")" @bind-Value="tier.ThresholdMinutes" /></div>
+                                            <div class="field"><label for="@($"role-{tierIndex}")">@T["ResponsibleRole"]</label><InputText id="@($"role-{tierIndex}")" @bind-Value="tier.ResponsibleRole" /></div>
+                                            <div class="field"><label for="@($"deadline-{tierIndex}")">@T["AcknowledgementDeadline"]</label><InputNumber id="@($"deadline-{tierIndex}")" @bind-Value="tier.AcknowledgementDeadlineMinutes" /></div>
+                                            <div class="field field--wide"><label for="@($"action-{tierIndex}")">@T["RecommendedAction"]</label><InputTextArea id="@($"action-{tierIndex}")" @bind-Value="tier.RecommendedAction" /></div>
+                                        </div>
+                                        @if (_proposal.Tiers.Count > 1)
+                                        {
+                                            <button type="button" class="button button--quiet" @onclick="() => RemoveTier(tierIndex)">@T["RemoveTier"]</button>
+                                        }
+                                    </fieldset>
+                                }
+                            </div>
+                            @if (_proposal.Tiers.Count < EscalationPolicy.MaxTiers)
+                            {
+                                <button type="button" class="button button--quiet" @onclick="AddTier">@T["AddTier"]</button>
+                            }
+                        }
+                        <div class="form-grid policy-details">
+                            <div class="field"><label for="follow-up-owner">@T["FollowUpOwner"]</label><InputText id="follow-up-owner" @bind-Value="_proposal.FollowUpOwnerRole" /></div>
+                            <div class="field field--wide"><label for="proposal-reason">@T["ProposalReason"]</label><InputTextArea id="proposal-reason" @bind-Value="_proposal.Reason" /></div>
+                        </div>
+                        <div class="form-actions">
+                            @if (_proposal.Enabled)
+                            {
+                                <button type="button" class="button button--quiet" @onclick="PreviewAsync">@T["PreviewPolicy"]</button>
+                            }
+                            <button type="submit" class="button">@T["SubmitProposal"]</button>
+                        </div>
+                    </fieldset>
+                </EditForm>
+
+                @if (_preview is not null)
+                {
+                    <div class="policy-preview" role="region" aria-label="@T["PolicyPreview"]">
+                        <h3>@T["PolicyPreview"]</h3>
+                        <p>@T["PatientsWaitingPreview", _preview.PatientsWaiting]</p>
+                        <table class="board"><thead><tr><th>@T["ColumnTier"]</th><th>@T["ThresholdMinutes"]</th><th>@T["PatientsReached"]</th><th>@T["NewEscalations"]</th></tr></thead>
+                        <tbody>@foreach (var tier in _preview.Tiers) { <tr><td>@tier.Level</td><td>@tier.ThresholdMinutes</td><td>@tier.PatientsAtOrPastThreshold</td><td>@tier.WouldBeNewlyEscalated</td></tr> }</tbody></table>
+                    </div>
+                }
+            </section>
+        }
+
+        <section aria-labelledby="policy-history-heading">
+            <h2 id="policy-history-heading">@T["PolicyHistory"]</h2>
+            @if (_overview.Revisions.Count == 0) { <p class="empty">@T["NoPolicyRevisions"]</p> }
+            @foreach (var revision in _overview.Revisions)
+            {
+                var decision = _decisions[revision.Id];
+                <article class="policy-revision">
+                    <PolicyRevisionCard Revision="revision" />
+                    @if (revision.State == "Proposed")
+                    {
+                        <fieldset class="decision-panel" disabled="@(!_interactive || _busy)">
+                            <div class="field"><label for="@($"reason-{revision.Id}")">@T["DecisionReason"]</label><textarea id="@($"reason-{revision.Id}")" @bind="decision.Reason" @bind:event="oninput"></textarea></div>
+                            <div class="form-actions">
+                                @if (Session.Identity.Can(Permissions.PolicyDecide))
+                                {
+                                    <button class="button" type="button" @onclick="() => DecideAsync(revision, decision, true)">@T["Approve"]</button>
+                                    <button class="button button--quiet" type="button" @onclick="() => DecideAsync(revision, decision, false)">@T["Reject"]</button>
+                                }
+                                @if (Session.Identity.Can(Permissions.PolicyPropose))
+                                {
+                                    <button class="button button--quiet" type="button" @onclick="() => WithdrawAsync(revision, decision)">@T["Withdraw"]</button>
+                                }
+                            </div>
+                        </fieldset>
+                    }
+                    else if (revision.State == "Approved" && !revision.InForce && Session.Identity.Can(Permissions.PolicyPropose))
+                    {
+                        <fieldset class="decision-panel" disabled="@(!_interactive || _busy)">
+                            <div class="field"><label for="@($"restore-{revision.Id}")">@T["RestorationReason"]</label><textarea id="@($"restore-{revision.Id}")" @bind="decision.Reason" @bind:event="oninput"></textarea></div>
+                            <button class="button button--quiet" type="button" @onclick="() => RestoreAsync(revision, decision)">@T["RestoreRevision"]</button>
+                        </fieldset>
+                    }
+                </article>
+            }
+        </section>
+    }
+</RequirePermission>
+
+@code {
+    private PolicyOverview? _overview;
+    private PolicyPreview? _preview;
+    private ProposalModel _proposal = ProposalModel.Default();
+    private readonly Dictionary<Guid, DecisionModel> _decisions = [];
+    private bool _interactive;
+    private bool _busy;
+    private string? _error;
+    private string? _success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureAsync();
+        if (Session.IsResolved && Session.Identity.Can(Permissions.PolicyRead)) await LoadAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) { _interactive = true; StateHasChanged(); }
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadAsync()
+    {
+        _overview = await Scope.RunAsync(services => services.GetRequiredService<EscalationQueries>().GetPolicyOverviewAsync(CancellationToken.None));
+        foreach (var revision in _overview.Revisions) _decisions.TryAdd(revision.Id, new());
+    }
+
+    private void AddTier() => _proposal.Tiers.Add(new TierModel());
+    private void RemoveTier(int index) => _proposal.Tiers.RemoveAt(index);
+
+    private IReadOnlyList<WaitingTimeTier> DomainTiers() => _proposal.Tiers.Select((tier, index) => new WaitingTimeTier(
+        index + 1, tier.ThresholdMinutes, tier.ResponsibleRole.Trim(), tier.AcknowledgementDeadlineMinutes, tier.RecommendedAction.Trim())).ToList();
+
+    private async Task PreviewAsync()
+    {
+        await ActAsync(async services => _preview = await services.GetRequiredService<EscalationQueries>().PreviewAsync(DomainTiers(), CancellationToken.None), null);
+    }
+
+    private Task ProposeAsync() => ActAsync(services => services.GetRequiredService<IMediator>().Send(new ProposeEscalationPolicyCommand
+    {
+        Enabled = _proposal.Enabled,
+        Tiers = _proposal.Enabled ? _proposal.Tiers.Select(t => new WaitingTimeTierInput
+        {
+            ThresholdMinutes = t.ThresholdMinutes,
+            ResponsibleRole = t.ResponsibleRole,
+            AcknowledgementDeadlineMinutes = t.AcknowledgementDeadlineMinutes,
+            RecommendedAction = t.RecommendedAction
+        }).ToList() : [],
+        FollowUpOwnerRole = _proposal.FollowUpOwnerRole,
+        Reason = _proposal.Reason
+    }), T["PolicyProposed"]);
+
+    private Task DecideAsync(PolicyRevisionView revision, DecisionModel decision, bool approve) => ActAsync(
+        services => approve
+            ? services.GetRequiredService<IMediator>().Send(new ApproveEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason })
+            : services.GetRequiredService<IMediator>().Send(new RejectEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason }),
+        approve ? T["PolicyApproved"] : T["PolicyRejected"]);
+
+    private Task WithdrawAsync(PolicyRevisionView revision, DecisionModel decision) => ActAsync(
+        services => services.GetRequiredService<IMediator>().Send(new WithdrawEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason }), T["PolicyWithdrawn"]);
+
+    private Task RestoreAsync(PolicyRevisionView revision, DecisionModel decision) => ActAsync(
+        services => services.GetRequiredService<IMediator>().Send(new ProposeEscalationPolicyRestorationCommand { Revision = revision.Revision, Reason = decision.Reason }), T["RestorationProposed"]);
+
+    private async Task ActAsync<TResult>(Func<IServiceProvider, Task<TResult>> action, string? success)
+    {
+        _busy = true; _error = null; _success = null;
+        try
+        {
+            await Scope.RunAsync(action);
+            _success = success;
+            if (success is not null) { _proposal = ProposalModel.Default(); _preview = null; await LoadAsync(); }
+        }
+        catch (Exception exception) { _error = T["ActionFailed", exception.Message]; }
+        finally { _busy = false; }
+    }
+
+    private sealed class ProposalModel
+    {
+        public bool Enabled { get; set; } = true;
+        public List<TierModel> Tiers { get; set; } = [];
+        public string FollowUpOwnerRole { get; set; } = "Nurse in Charge";
+        public string Reason { get; set; } = string.Empty;
+        public static ProposalModel Default() => new() { Tiers = [new TierModel()] };
+    }
+    private sealed class TierModel
+    {
+        public int ThresholdMinutes { get; set; } = 240;
+        public string ResponsibleRole { get; set; } = "Waiting-room Coordinator";
+        public int AcknowledgementDeadlineMinutes { get; set; } = 30;
+        public string RecommendedAction { get; set; } = string.Empty;
+    }
+    private sealed class DecisionModel { public string Reason { get; set; } = string.Empty; }
+}

@@ -1,0 +1,107 @@
+@page "/patients/register"
+@using System.ComponentModel.DataAnnotations
+@using Betsi.Application.Commands
+@using Betsi.Security
+@using MediatR
+@attribute [Authorize]
+@inject UiScopeRunner Scope
+@inject UiSession Session
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["RegisterPatientTitle"]</PageTitle>
+
+<RequirePermission Permission="@Permissions.PatientsRegister">
+    <h1>@T["RegisterPatientTitle"]</h1>
+    <p class="lede">@T["RegisterPatientSummary"]</p>
+
+    @if (_error is not null)
+    {
+        <p class="notice notice--error" role="alert">@_error</p>
+    }
+
+    <EditForm Model="_model" OnValidSubmit="RegisterAsync" FormName="register-patient" class="clinical-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <fieldset disabled="@(!_interactive || _saving)">
+        <div class="form-grid">
+            <div class="field">
+                <label for="first-name">@T["FirstName"]</label>
+                <InputText id="first-name" @bind-Value="_model.FirstName" autocomplete="off" />
+                <ValidationMessage For="@(() => _model.FirstName)" />
+            </div>
+            <div class="field">
+                <label for="last-name">@T["LastName"]</label>
+                <InputText id="last-name" @bind-Value="_model.LastName" autocomplete="off" />
+                <ValidationMessage For="@(() => _model.LastName)" />
+            </div>
+            <div class="field">
+                <label for="date-of-birth">@T["DateOfBirth"]</label>
+                <InputDate id="date-of-birth" @bind-Value="_model.DateOfBirth" />
+                <ValidationMessage For="@(() => _model.DateOfBirth)" />
+            </div>
+            <div class="field">
+                <label for="nhs-number">@T["NhsNumber"]</label>
+                <InputText id="nhs-number" @bind-Value="_model.NhsNumber" inputmode="numeric" autocomplete="off" />
+                <span class="hint">@T["NhsNumberHint"]</span>
+            </div>
+        </div>
+
+        <button type="submit" class="button">@T["RegisterPatient"]</button>
+        </fieldset>
+    </EditForm>
+</RequirePermission>
+
+@code {
+    private readonly RegistrationModel _model = new();
+    private bool _saving;
+    private bool _interactive;
+    private string? _error;
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_interactive)
+        {
+            _interactive = true;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task RegisterAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var result = await Scope.RunAsync(services =>
+                services.GetRequiredService<IMediator>().Send(new RegisterPatientCommand
+                {
+                    FirstName = _model.FirstName.Trim(),
+                    LastName = _model.LastName.Trim(),
+                    DateOfBirth = _model.DateOfBirth!.Value,
+                    NhsNumber = string.IsNullOrWhiteSpace(_model.NhsNumber)
+                        ? null
+                        : new string(_model.NhsNumber.Where(char.IsDigit).ToArray())
+                }));
+            Navigation.NavigateTo(UiRoutes.Episode(result.AggregateId));
+        }
+        catch (Exception exception)
+        {
+            _error = T["ActionFailed", exception.Message];
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class RegistrationModel
+    {
+        [Required, StringLength(100)] public string FirstName { get; set; } = string.Empty;
+        [Required, StringLength(100)] public string LastName { get; set; } = string.Empty;
+        [Required] public DateTime? DateOfBirth { get; set; }
+        public string? NhsNumber { get; set; }
+    }
+}

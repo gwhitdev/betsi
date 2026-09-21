@@ -185,6 +185,27 @@ public class Escalation : AggregateRoot
         return escalation;
     }
 
+    /// <summary>A safety alert produced from a recorded clinical fact.</summary>
+    public static Escalation CreateSystemAlert(
+        Guid tenantId,
+        Guid patientEpisodeId,
+        Guid? locationId,
+        string responsibleRole,
+        string notes,
+        Guid actorId,
+        string actorRole,
+        DateTime now)
+    {
+        var escalation = new Escalation(
+            tenantId, patientEpisodeId, locationId, queueId: null, responsibleRole,
+            EscalationTrigger.SystemAlert, DefaultAcknowledgementDeadlineMinutes, now)
+        {
+            Notes = notes
+        };
+        escalation.RaiseCreated(actorId, actorRole, now);
+        return escalation;
+    }
+
     private void RaiseCreated(Guid actorId, string actorRole, DateTime now) =>
         RaiseDomainEvent(new EscalationCreated
         {

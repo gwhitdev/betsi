@@ -1,4 +1,5 @@
 @* The document itself. Rendered on the server for every page. *@
+@inject IStringLocalizer<Strings> T
 <!DOCTYPE html>
 <html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -17,11 +18,12 @@
     @* Rendered without JavaScript, so a circuit that cannot reconnect says so in words rather
        than leaving a board silently frozen on hour-old waiting times. *@
     <div id="reconnect-banner" role="alert" aria-live="assertive" style="display:none">
-        <p>The connection to the server was lost. Waiting times on this screen are no longer updating.</p>
-        <button type="button" onclick="location.reload()">Reload</button>
+        <p>@T["ConnectionLost"]</p>
+        <button type="button" class="button button--quiet" onclick="location.reload()">@T["Reload"]</button>
     </div>
 
     <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="lib/signalr/signalr.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -2,11 +2,12 @@
    redirect: an expired session on a ward screen should say what happened, not silently bounce
    through an identity provider while someone is reading it. *@
 @inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> T
 
-<h1>Sign in</h1>
-<p>You need to sign in to see this page.</p>
+<h1>@T["SignIn"]</h1>
+<p>@T["SignInRequired"]</p>
 <p>
-    <a class="button" href="@($"{UiRoutes.SignIn}?returnUrl={Uri.EscapeDataString(ReturnUrl)}")">Sign in</a>
+    <a class="button" href="@($"{UiRoutes.SignIn}?returnUrl={Uri.EscapeDataString(ReturnUrl)}")">@T["SignIn"]</a>
 </p>
 
 @code {

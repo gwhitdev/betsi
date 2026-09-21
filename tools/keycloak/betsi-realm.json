@@ -272,6 +272,18 @@
       "email": "chosen@betsi.example.test"
     }
   ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"betsi_tenant_id\",\"displayName\":\"Betsi department\",\"group\":\"betsi-access\",\"validations\":{\"options\":{\"options\":[\"11111111-1111-1111-1111-111111111111\",\"22222222-2222-2222-2222-222222222222\"]}},\"annotations\":{\"inputType\":\"select\",\"inputOptionLabels\":{\"11111111-1111-1111-1111-111111111111\":\"Ysbyty Glan Clwyd (development)\",\"22222222-2222-2222-2222-222222222222\":\"Wrexham Maelor (development)\"}},\"required\":{\"roles\":[\"admin\"]},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"betsi_roles\",\"displayName\":\"Betsi roles\",\"group\":\"betsi-access\",\"validations\":{\"options\":{\"options\":[\"Nurse\",\"Staff Nurse\",\"Nurse in Charge\",\"Senior Clinician\",\"Doctor\",\"Consultant\",\"Clinical Lead\",\"Operations Manager\",\"Site Manager\",\"Matron\",\"Waiting-room Coordinator\",\"Bed Manager\",\"Receptionist\",\"Site Administrator\"]},\"multivalued\":{\"min\":1,\"max\":4}},\"annotations\":{\"inputType\":\"multiselect\"},\"required\":{\"roles\":[\"admin\"]},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":true},{\"name\":\"betsi_acting_role\",\"displayName\":\"Betsi acting role\",\"group\":\"betsi-access\",\"validations\":{\"options\":{\"options\":[\"Nurse\",\"Staff Nurse\",\"Nurse in Charge\",\"Senior Clinician\",\"Doctor\",\"Consultant\",\"Clinical Lead\",\"Operations Manager\",\"Site Manager\",\"Matron\",\"Waiting-room Coordinator\",\"Bed Manager\",\"Receptionist\",\"Site Administrator\"]}},\"annotations\":{\"inputType\":\"select\",\"inputHelperTextAfter\":\"Leave blank for a single-role account. For multiple roles, select the role used by this login session.\"},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Basic account details\"},{\"name\":\"betsi-access\",\"displayHeader\":\"Betsi access\",\"displayDescription\":\"Department and application roles. Only administrators can change these fields.\"}]}"
+          ]
+        }
+      }
+    ]
+  },
   "requiredActions": [
     {
       "alias": "VERIFY_PROFILE",

@@ -1,6 +1,7 @@
 namespace Betsi.UI;
 
 using Betsi.ControlPlane;
+using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
 using Betsi.Security;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -229,4 +230,31 @@ public sealed class UiScopeRunner
             await work(services);
             return null;
         });
+
+    /// <summary>Runs a patient-data read and records it in the tenant audit trail.</summary>
+    public async Task<T> RunReadAsync<T>(
+        string resource, Guid affectedId, Func<IServiceProvider, Task<T>> work)
+    {
+        var identity = _session.Identity;
+
+        await using var scope = _scopes.CreateAsyncScope();
+        scope.ServiceProvider.GetRequiredService<TenantContext>()
+            .Resolve(identity.TenantId, identity.ActorId, identity.ActingRole);
+
+        var result = await work(scope.ServiceProvider);
+        var db = scope.ServiceProvider.GetRequiredService<BetsiDbContext>();
+        db.AuditLogs.Add(new AuditLogRecord
+        {
+            TenantId = identity.TenantId,
+            Action = $"Read:{resource}",
+            ActorId = identity.ActorId,
+            ActorRole = identity.ActingRole,
+            AffectedAggregateId = affectedId,
+            AffectedAggregateType = resource,
+            Outcome = "Read",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        return result;
+    }
 }

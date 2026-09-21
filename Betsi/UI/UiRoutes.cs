@@ -9,6 +9,11 @@ public static class UiRoutes
     public const string Dashboard = "/";
     public const string EscalationBoard = "/escalations";
     public const string WaitingBoard = "/waiting";
+    public const string RegisterPatient = "/patients/register";
+    public const string Episodes = "/episodes";
+    public const string Policy = "/policy";
+
+    public static string Episode(Guid id) => $"{Episodes}/{id}";
 
     public const string SignIn = "/sign-in";
     public const string SignInCallback = "/sign-in/callback";
