@@ -2,12 +2,14 @@
 @using Betsi.Application.Commands
 @using Betsi.Application.Escalations
 @using Betsi.Domain.Aggregates
+@using Betsi.Domain
 @using Betsi.Security
 @using MediatR
 @attribute [Authorize]
 @inject UiScopeRunner Scope
 @inject UiSession Session
 @inject IStringLocalizer<Strings> T
+@inject ILogger<PolicyEditor> Logger
 
 <PageTitle>@T["PolicyTitle"]</PageTitle>
 
@@ -40,7 +42,7 @@
         {
             <section aria-labelledby="propose-policy-heading">
                 <h2 id="propose-policy-heading">@T["ProposePolicy"]</h2>
-                <EditForm Model="_proposal" OnSubmit="ProposeAsync" FormName="propose-policy" class="clinical-form">
+                <EditForm EditContext="_proposalContext" OnSubmit="ProposeAsync" FormName="propose-policy" class="clinical-form" @oninput="MarkDraftChanged">
                     <fieldset disabled="@(!_interactive || _busy)">
                         <div class="field field--checkbox">
                             <InputCheckbox id="policy-enabled" @bind-Value="_proposal.Enabled" />
@@ -87,10 +89,15 @@
                     </fieldset>
                 </EditForm>
 
+                @if (_previewStale)
+                {
+                    <p class="notice notice--warning" role="status">@T["PolicyPreviewStale"]</p>
+                }
                 @if (_preview is not null)
                 {
                     <div class="policy-preview" role="region" aria-label="@T["PolicyPreview"]">
                         <h3>@T["PolicyPreview"]</h3>
+                        <p>@T["PolicyPreviewDraft", _previewDraft, _previewedAt?.ToLocalTime().ToString("g") ?? ""]</p>
                         <p>@T["PatientsWaitingPreview", _preview.PatientsWaiting]</p>
                         <table class="board"><thead><tr><th>@T["ColumnTier"]</th><th>@T["ThresholdMinutes"]</th><th>@T["PatientsReached"]</th><th>@T["NewEscalations"]</th></tr></thead>
                         <tbody>@foreach (var tier in _preview.Tiers) { <tr><td>@tier.Level</td><td>@tier.ThresholdMinutes</td><td>@tier.PatientsAtOrPastThreshold</td><td>@tier.WouldBeNewlyEscalated</td></tr> }</tbody></table>
@@ -141,11 +148,22 @@
     private PolicyOverview? _overview;
     private PolicyPreview? _preview;
     private ProposalModel _proposal = ProposalModel.Default();
+    private EditContext _proposalContext;
+    private int _draftVersion = 1;
+    private int _previewDraft;
+    private DateTime? _previewedAt;
+    private bool _previewStale;
     private readonly Dictionary<Guid, DecisionModel> _decisions = [];
     private bool _interactive;
     private bool _busy;
     private string? _error;
     private string? _success;
+
+    public PolicyEditor()
+    {
+        _proposalContext = new EditContext(_proposal);
+        _proposalContext.OnFieldChanged += (_, _) => MarkDraftChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,15 +183,35 @@
         foreach (var revision in _overview.Revisions) _decisions.TryAdd(revision.Id, new());
     }
 
-    private void AddTier() => _proposal.Tiers.Add(new TierModel());
-    private void RemoveTier(int index) => _proposal.Tiers.RemoveAt(index);
+    private void AddTier() { _proposal.Tiers.Add(new TierModel()); MarkDraftChanged(); }
+    private void RemoveTier(int index) { _proposal.Tiers.RemoveAt(index); MarkDraftChanged(); }
+
+    private void MarkDraftChanged()
+    {
+        _draftVersion++;
+        if (_preview is not null || _previewedAt is not null) _previewStale = true;
+        _preview = null;
+    }
 
     private IReadOnlyList<WaitingTimeTier> DomainTiers() => _proposal.Tiers.Select((tier, index) => new WaitingTimeTier(
         index + 1, tier.ThresholdMinutes, tier.ResponsibleRole.Trim(), tier.AcknowledgementDeadlineMinutes, tier.RecommendedAction.Trim())).ToList();
 
     private async Task PreviewAsync()
     {
-        await ActAsync(async services => _preview = await services.GetRequiredService<EscalationQueries>().PreviewAsync(DomainTiers(), CancellationToken.None), null);
+        var draft = _draftVersion;
+        var tiers = DomainTiers();
+        await ActAsync(async services =>
+        {
+            var preview = await services.GetRequiredService<EscalationQueries>().PreviewAsync(tiers, CancellationToken.None);
+            if (draft == _draftVersion)
+            {
+                _preview = preview;
+                _previewDraft = draft;
+                _previewedAt = DateTime.UtcNow;
+                _previewStale = false;
+            }
+            return preview;
+        }, null, T["PolicyPreview"]);
     }
 
     private Task ProposeAsync() => ActAsync(services => services.GetRequiredService<IMediator>().Send(new ProposeEscalationPolicyCommand
@@ -188,30 +226,30 @@
         }).ToList() : [],
         FollowUpOwnerRole = _proposal.FollowUpOwnerRole,
         Reason = _proposal.Reason
-    }), T["PolicyProposed"]);
+    }), T["PolicyProposed"], T["ProposePolicy"]);
 
     private Task DecideAsync(PolicyRevisionView revision, DecisionModel decision, bool approve) => ActAsync(
         services => approve
             ? services.GetRequiredService<IMediator>().Send(new ApproveEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason })
             : services.GetRequiredService<IMediator>().Send(new RejectEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason }),
-        approve ? T["PolicyApproved"] : T["PolicyRejected"]);
+        approve ? T["PolicyApproved"] : T["PolicyRejected"], $"{T[approve ? "Approve" : "Reject"]} — {T["PolicyRevision", revision.Revision]}");
 
     private Task WithdrawAsync(PolicyRevisionView revision, DecisionModel decision) => ActAsync(
-        services => services.GetRequiredService<IMediator>().Send(new WithdrawEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason }), T["PolicyWithdrawn"]);
+        services => services.GetRequiredService<IMediator>().Send(new WithdrawEscalationPolicyCommand { PolicyId = revision.Id, ExpectedVersion = revision.Version, Reason = decision.Reason }), T["PolicyWithdrawn"], $"{T["Withdraw"]} — {T["PolicyRevision", revision.Revision]}");
 
     private Task RestoreAsync(PolicyRevisionView revision, DecisionModel decision) => ActAsync(
-        services => services.GetRequiredService<IMediator>().Send(new ProposeEscalationPolicyRestorationCommand { Revision = revision.Revision, Reason = decision.Reason }), T["RestorationProposed"]);
+        services => services.GetRequiredService<IMediator>().Send(new ProposeEscalationPolicyRestorationCommand { Revision = revision.Revision, Reason = decision.Reason }), T["RestorationProposed"], $"{T["RestoreRevision"]} — {T["PolicyRevision", revision.Revision]}");
 
-    private async Task ActAsync<TResult>(Func<IServiceProvider, Task<TResult>> action, string? success)
+    private async Task ActAsync<TResult>(Func<IServiceProvider, Task<TResult>> action, string? success, string? subject = null)
     {
         _busy = true; _error = null; _success = null;
         try
         {
             await Scope.RunAsync(action);
             _success = success;
-            if (success is not null) { _proposal = ProposalModel.Default(); _preview = null; await LoadAsync(); }
+            if (success is not null) { _proposal = ProposalModel.Default(); _proposalContext = new EditContext(_proposal); _proposalContext.OnFieldChanged += (_, _) => MarkDraftChanged(); _preview = null; _previewStale = false; _previewedAt = null; _draftVersion++; await LoadAsync(); }
         }
-        catch (Exception exception) { _error = T["ActionFailed", exception.Message]; }
+        catch (Exception exception) { Logger.LogError(exception, "Policy action failed"); _error = UiActionFeedback.For(exception, subject ?? T["ProposePolicy"], T); }
         finally { _busy = false; }
     }
 

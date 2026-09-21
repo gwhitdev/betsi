@@ -28,14 +28,14 @@ test('sign out removes access when a board is reopened', async ({ page }) => {
 });
 
 test('an expired login ends the live circuit and removes patient data', async ({ page, fixtures }) => {
-  test.setTimeout(100_000);
+  test.setTimeout(170_000);
   const patient = await fixtures.patient();
   await signIn(page);
   await expect(page.locator('main')).toContainText(patient.name);
   await expect(page.locator('.live-status')).toHaveClass(/--on/);
-  // The isolated host issues one-minute cookies. No navigation or cookie manipulation:
+  // The isolated host issues two-minute cookies. No navigation or cookie manipulation:
   // the existing authenticated circuit must stop being usable when its ticket expires.
-  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible({ timeout: 80_000 });
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible({ timeout: 150_000 });
   await expect(page.locator('main')).not.toContainText(patient.name);
   await expect(page.locator('table')).toHaveCount(0);
 });

@@ -9,6 +9,7 @@
 @inject UiScopeRunner Scope
 @inject UiSession Session
 @inject IStringLocalizer<Strings> T
+@inject ILogger<EscalationDashboard> Logger
 
 <PageTitle>@T["EscalationsTitle"]</PageTitle>
 
@@ -302,21 +303,22 @@ else
         }
         catch (Exception exception)
         {
-            _error = T["ActionFailed", exception.Message];
+            Logger.LogError(exception, "Escalation board refresh failed");
+            _error = T["BoardRefreshFailed"];
         }
     }
 
     private Task AcknowledgeAsync(EscalationCard card) =>
-        SendAsync(new AcknowledgeEscalationCommand { EscalationId = card.Id });
+        SendAsync(new AcknowledgeEscalationCommand { EscalationId = card.Id }, $"{T["Acknowledge"]} — {PatientName(card)}");
 
     private Task ResolveAsync(EscalationCard card) =>
-        SendAsync(new ResolveEscalationCommand { EscalationId = card.Id });
+        SendAsync(new ResolveEscalationCommand { EscalationId = card.Id }, $"{T["Resolve"]} — {PatientName(card)}");
 
     private Task ReassignAsync(EscalationCard card, EscalationActionModel action) =>
-        SendAsync(new ReassignEscalationCommand { EscalationId = card.Id, ResponsibleRole = action.ResponsibleRole, Reason = action.Reason });
+        SendAsync(new ReassignEscalationCommand { EscalationId = card.Id, ResponsibleRole = action.ResponsibleRole, Reason = action.Reason }, $"{T["Reassign"]} — {PatientName(card)}");
 
     private Task CloseFollowUpAsync(FollowUpExceptionCard exception, FollowUpReviewModel review) =>
-        SendAsync(new CloseFollowUpExceptionCommand { FollowUpExceptionId = exception.Id, Outcome = review.Outcome, ReviewNotes = review.Notes });
+        SendAsync(new CloseFollowUpExceptionCommand { FollowUpExceptionId = exception.Id, Outcome = review.Outcome, ReviewNotes = review.Notes }, $"{T["FollowUpExceptions"]} — {exception.Patient?.Name ?? "—"}");
 
     private async Task ShowHistoryAsync(Guid escalationId)
     {
@@ -326,7 +328,7 @@ else
                 services.GetRequiredService<EscalationQueries>().GetAuditTrailAsync(escalationId, CancellationToken.None));
             _actionError = null;
         }
-        catch (Exception) { _actionError = T["ActionNotCompleted"]; }
+        catch (Exception exception) { Logger.LogError(exception, "Escalation history load failed for {EscalationId}", escalationId); _actionError = UiActionFeedback.For(exception, T["ViewHistory"], T); }
     }
 
     /// <summary>
@@ -334,7 +336,7 @@ else
     /// has no privileged path of its own: permissions, licence rules and the audit trail apply
     /// exactly as they would to an integration.
     /// </summary>
-    private async Task SendAsync(ICommand command)
+    private async Task SendAsync(ICommand command, string subject)
     {
         _busy = true;
         _actionError = null;
@@ -343,10 +345,11 @@ else
             await Scope.RunAsync(services => services.GetRequiredService<ISender>().Send(command));
             _error = null;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             // Refreshing the data must not erase the failed action's feedback.
-            _actionError = T["ActionNotCompleted"];
+            Logger.LogError(exception, "Escalation action failed for {Subject}", subject);
+            _actionError = UiActionFeedback.For(exception, subject, T);
         }
         finally
         {
