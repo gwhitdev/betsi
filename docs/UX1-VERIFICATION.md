@@ -22,6 +22,10 @@ not clinical, Welsh-terminology, manual accessibility, or pilot approval.
   confirms the failed action identifies the synthetic patient, explains the conflict and
   recovery, and does not display raw exception text. Feedback also distinguishes validation,
   permission, and service failures; a unit test checks those mappings.
+- A waiting-board patient-name click now has a browser regression that waits for the selected
+  episode heading. The development host on port 5080 was still running an older build; its
+  Blazor circuit failed during the click and left `Loading…` visible. After restarting that
+  host with this branch's build, the same synthetic navigation loaded and remained stable.
 
 ## Verification
 

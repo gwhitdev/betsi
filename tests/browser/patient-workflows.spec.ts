@@ -91,6 +91,14 @@ test('episode detail does not disclose another department', async ({ page, fixtu
   await expect(page.locator('main')).not.toContainText(foreign.name);
 });
 
+test('waiting-board patient link finishes loading the episode', async ({ page, fixtures }) => {
+  const patient = await fixtures.patient();
+  await signIn(page, 'nurse', '/waiting');
+  await page.getByRole('link', { name: patient.name }).click();
+  await expect(page).toHaveURL(new RegExp(`/episodes/${patient.id}$`));
+  await expect(page.getByRole('heading', { level: 1, name: patient.name })).toBeVisible();
+});
+
 test('paediatric clinician assignment records training status', async ({ page, fixtures }) => {
   const child = await fixtures.child();
   await signIn(page, 'nurse', `/episodes/${child.id}`);
