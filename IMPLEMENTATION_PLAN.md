@@ -1,8 +1,9 @@
 # Betsi Patient Flow — Implementation Plan
 
-**Created**: 2026-09-12 · **Last updated**: 2026-09-18
+**Created**: 2026-09-12 · **Last updated**: 2026-09-21
 **Scope**: everything from "code compiles" to "MVP pilot-ready"
 **Where things stand today**: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
+**Next implementation tranche**: [UX/UI functionality plan](docs/UX-IMPLEMENTATION-PLAN.md)
 
 | Phase | State |
 |---|---|
@@ -10,8 +11,8 @@
 | D Multi-tenancy & licensing · E Escalation engine | ✅ Delivered and merged — PR #1 |
 | G API, authentication, integration | ✅ Delivered and merged — [PR #2](https://github.com/gwhitdev/betsi/pull/2) |
 | I Deployment & operations | ✅ Delivered and merged — [PR #3](https://github.com/gwhitdev/betsi/pull/3) |
-| F Clinical safety features | 🔄 Observation persistence/API implemented locally with N1 evidence; remaining clinical slices and approval open |
-| H UI & dashboards | 🔄 Two headline boards delivered; accessibility verification and remaining workflows open |
+| F Clinical safety features | 🔄 Implemented code merged in [PR #4](https://github.com/gwhitdev/betsi/pull/4); remaining clinical scope and approval open |
+| H UI & dashboards | 🔄 Current screens merged in PR #4; functional UX tranche and human accessibility/Welsh review remain open |
 
 Phase sections below record what was delivered against what was planned. Estimates are the
 original ones, kept so future estimates can be calibrated against them.

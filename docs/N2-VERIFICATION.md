@@ -1,7 +1,7 @@
 # N2 browser verification
 
-Engineering evidence for the waiting-room and escalation boards. This is local verification;
-the added CI job has not yet run on a remote commit. Human Welsh terminology and manual
+Engineering evidence for the waiting-room and escalation boards. The browser job passed in
+[PR #4](https://github.com/gwhitdev/betsi/pull/4) CI on 2026-09-21. Human Welsh terminology and manual
 screen-reader/device reviews were explicitly deferred by the user on 2026-09-18.
 
 ## Reproduce
@@ -24,7 +24,8 @@ The suite creates only uniquely named synthetic patients. Cleanup cancels their 
 resolves their escalations through the audited APIs, including interrupted-run fixtures;
 history and audit records are retained in the browser-test databases.
 
-The test host issues one-minute cookies to exercise actual ticket expiry. Normal development
+The test host issues two-minute cookies to exercise actual ticket expiry while allowing the
+UX-1 simulated SQL outage and retry journey to complete. Normal development
 sessions remain twelve hours. By default the runner does not reuse a server on port 8080,
 preventing accidental tests against an unrelated application. `BETSI_UI_REUSE_SERVER=1` is an
 explicit local diagnostics override.
@@ -43,7 +44,7 @@ explicit local diagnostics override.
 | Lost connection | Offline warning, disabled stale actions, fresh authorised data after reconnect on both boards |
 | Failed initial subscription | Retry and refetch after the board hub returns |
 | Suspended browser | Chromium page freeze/resume with a missed change; does not establish physical tablet acceptance |
-| Session expiry and logout | Actual one-minute cookie expiry closes a running circuit and removes patient data; full Keycloak logout and refusal on reopening |
+| Session expiry and logout | Actual two-minute cookie expiry closes a running circuit and removes patient data; full Keycloak logout and refusal on reopening |
 | Live latency | Five command-submission-to-render samples on the waiting board; five on a dashboard starting with 150 open escalations |
 | Translation completeness | .NET resource-key parity test; terminology correctness still needs human review |
 | CI | `browser` job installs Chromium, starts SQL/Keycloak, builds, runs tests and uploads evidence even on failure |
@@ -112,4 +113,4 @@ Coverage is in `TestResults/n2.cobertura.xml` and the local runner log in
   Application **86.6%**, both above the 70% gate.
 - The browser test found a stale Blazor edit-context bug in observation correction, now fixed
   and regression-tested. Keycloak's development volume and import mounts were corrected.
-- Remote CI, qualified Welsh review and manual screen-reader/device checks remain open.
+- Remote CI passed on PR #4. Qualified Welsh review and manual screen-reader/device checks remain open.

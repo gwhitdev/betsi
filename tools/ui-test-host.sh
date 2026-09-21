@@ -6,6 +6,6 @@ export ConnectionStrings__ControlPlane='Server=localhost,1433;Database=betsi_bro
 export Tenancy__SeedTenants__0__DatabaseName=betsi_browser_glan_clwyd
 export Tenancy__SeedTenants__1__DatabaseName=betsi_browser_wrexham
 export Serilog__MinimumLevel__Default=Warning
-export Authentication__Interactive__SessionLifetime=00:01:00
+export Authentication__Interactive__SessionLifetime=00:02:00
 cd Betsi
 exec dotnet bin/Debug/net10.0/Betsi.Core.dll --urls http://localhost:8080

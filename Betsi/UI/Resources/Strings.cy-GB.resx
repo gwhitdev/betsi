@@ -184,6 +184,18 @@
   <data name="ActionFailed" xml:space="preserve">
     <value>Ni ellid cwblhau'r weithred honno: {0}</value>
   </data>
+  <data name="ActionFailureFor" xml:space="preserve"><value>Ni ellid cwblhau {0}. {1}</value></data>
+  <data name="ActionValidationRecovery" xml:space="preserve"><value>Gwiriwch y manylion a nodwyd a rhowch gynnig arall arni.</value></data>
+  <data name="ActionConflictRecovery" xml:space="preserve"><value>Newidiodd y cofnod hwn wrth i chi weithio. Adnewyddwch ef, adolygwch y manylion diweddaraf, ac yna rhowch gynnig arall arni.</value></data>
+  <data name="ActionPermissionRecovery" xml:space="preserve"><value>Nid yw eich rôl yn caniatáu'r weithred hon. Gofynnwch i gydweithiwr awdurdodedig am gymorth.</value></data>
+  <data name="ActionServiceRecovery" xml:space="preserve"><value>Nid yw'r gwasanaeth ar gael dros dro. Rhowch gynnig arall arni cyn bo hir.</value></data>
+  <data name="EpisodeLoadFailedTitle" xml:space="preserve"><value>Ni ellid llwytho pennod y claf</value></data>
+  <data name="EpisodeLoadFailed" xml:space="preserve"><value>Ni allem lwytho pennod y claf hwn. Rhowch gynnig arall arni. Os yw'r broblem yn parhau, cysylltwch â'r cymorth.</value></data>
+  <data name="Retry" xml:space="preserve"><value>Rhowch gynnig arall arni</value></data>
+  <data name="TerminalEpisodeLateRecording" xml:space="preserve"><value>Mae'r bennod hon wedi dod i ben. Mae'r rheolyddion cofnodi a chywiro isod ar gael o hyd ar gyfer dogfennu'n hwyr o dan reolau presennol y system. Gwiriwch y bennod a'r claf cyn cadw.</value></data>
+  <data name="PolicyPreviewStale" xml:space="preserve"><value>Newidiodd y drafft ar ôl y rhagolwg. Rhagwelwch eto i weld effaith y drafft presennol.</value></data>
+  <data name="PolicyPreviewDraft" xml:space="preserve"><value>Fersiwn drafft {0}, rhagwelwyd {1}.</value></data>
+  <data name="BoardRefreshFailed" xml:space="preserve"><value>Ni ellid diweddaru'r bwrdd uwchgyfeirio. Gwiriwch eich cysylltiad a rhowch gynnig arall arni.</value></data>
   <data name="NotPermitted" xml:space="preserve">
     <value>Nid yw eich rôl yn caniatáu'r weithred honno.</value>
   </data>

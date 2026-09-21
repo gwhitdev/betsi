@@ -9,6 +9,7 @@
 @inject UiScopeRunner Scope
 @inject UiSession Session
 @inject IStringLocalizer<Strings> T
+@inject ILogger<EpisodeDetail> Logger
 
 <PageTitle>@(_episode is null ? T["EpisodeTitle"] : $"{_episode.FirstName} {_episode.LastName}")</PageTitle>
 
@@ -22,10 +23,23 @@
         <h1>@T["EpisodeNotFound"]</h1>
         <p><a href="@UiRoutes.WaitingBoard">@T["BackToWaiting"]</a></p>
     }
+    else if (_loadFailed)
+    {
+        <h1>@T["EpisodeLoadFailedTitle"]</h1>
+        <p class="notice notice--error" role="alert">@T["EpisodeLoadFailed"]</p>
+        <form method="get" action="@UiRoutes.Episode(EpisodeId)" data-enhance="false">
+            <input type="hidden" name="retry" value="@_retryToken" />
+            <button type="submit" class="button">@T["Retry"]</button>
+        </form>
+    }
     else if (_episode is not null)
     {
         <h1>@_episode.FirstName @_episode.LastName</h1>
         <p class="lede">@T["EpisodeSummary", T[_episode.State], _episode.AgeYears]</p>
+        @if (IsTerminal)
+        {
+            <p class="notice notice--warning">@T["TerminalEpisodeLateRecording"]</p>
+        }
 
         <dl class="patient-identifiers" aria-label="@T["PatientIdentifiers"]">
             <div><dt>@T["DateOfBirth"]</dt><dd>@_episode.DateOfBirth.ToString("d")</dd></div>
@@ -152,7 +166,7 @@
                 </EditForm>
             }
 
-            @if (Session.Identity.Can(Permissions.PatientsCare))
+            @if (Session.Identity.Can(Permissions.PatientsCare) && !IsTerminal)
             {
                 <EditForm Model="_deterioration" OnValidSubmit="FlagDeteriorationAsync" FormName="flag-deterioration" class="clinical-form">
                     <fieldset disabled="@(!_interactive || _saving)">
@@ -354,6 +368,7 @@
     [Parameter] public Guid EpisodeId { get; set; }
 
     private Betsi.Application.Queries.EpisodeDetail? _episode;
+    private Guid? _displayedEpisodeId;
     private IReadOnlyList<ObservationView> _observations = [];
     private IReadOnlyList<LocationChoice> _locations = [];
     private ObservationModel _observation = new();
@@ -368,6 +383,9 @@
     private bool _identityConfirmed;
     private bool _endConfirmed;
     private bool _notFound;
+    private bool _loadFailed;
+    private Guid _retryToken;
+    private bool IsTerminal => _episode?.State is "Discharged" or "Cancelled";
     private string? _error;
     private string? _success;
 
@@ -383,6 +401,13 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_displayedEpisodeId != EpisodeId)
+        {
+            _episode = null;
+            _observations = [];
+            _locations = [];
+            _displayedEpisodeId = EpisodeId;
+        }
         await Session.EnsureAsync();
         if (!Session.IsResolved || !Session.Identity.Can(Permissions.EpisodesRead))
         {
@@ -395,6 +420,9 @@
 
     private async Task LoadAsync()
     {
+        _loading = true;
+        _loadFailed = false;
+        _notFound = false;
         try
         {
             var data = await Scope.RunReadAsync<EpisodePageData>("EpisodePage", EpisodeId, async services =>
@@ -417,11 +445,12 @@
             _observations = data.Observations;
             _locations = data.Locations;
             _notFound = _episode is null;
-            _error = null;
         }
         catch (Exception exception)
         {
-            _error = T["ActionFailed", exception.Message];
+            Logger.LogError(exception, "Failed to load episode {EpisodeId}", EpisodeId);
+            if (_episode is null) { _loadFailed = true; _retryToken = Guid.NewGuid(); }
+            else _error = T["EpisodeLoadFailed"];
         }
         finally
         {
@@ -481,7 +510,8 @@
         }
         catch (Exception exception)
         {
-            _error = T["ActionFailed", exception.Message];
+            Logger.LogError(exception, "Observation action failed for episode {EpisodeId}", EpisodeId);
+            _error = UiActionFeedback.For(exception, $"{T[_observation.SupersedesObservationId is null ? "RecordObservation" : "CorrectObservation"]} — {_episode?.FirstName} {_episode?.LastName}", T);
         }
         finally
         {
@@ -622,7 +652,8 @@
         }
         catch (Exception exception)
         {
-            _error = T["ActionFailed", exception.Message];
+            Logger.LogError(exception, "Clinical action {Action} failed for episode {EpisodeId}", successKey, EpisodeId);
+            _error = UiActionFeedback.For(exception, $"{T[successKey]} — {_episode?.FirstName} {_episode?.LastName}", T);
         }
         finally
         {

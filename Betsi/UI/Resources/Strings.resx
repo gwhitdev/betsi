@@ -184,6 +184,18 @@
   <data name="ActionFailed" xml:space="preserve">
     <value>That action could not be completed: {0}</value>
   </data>
+  <data name="ActionFailureFor" xml:space="preserve"><value>{0} could not be completed. {1}</value></data>
+  <data name="ActionValidationRecovery" xml:space="preserve"><value>Check the entered details and try again.</value></data>
+  <data name="ActionConflictRecovery" xml:space="preserve"><value>This record changed while you were working. Refresh it, review the latest details, then try again.</value></data>
+  <data name="ActionPermissionRecovery" xml:space="preserve"><value>Your role does not permit this action. Ask an authorised colleague for help.</value></data>
+  <data name="ActionServiceRecovery" xml:space="preserve"><value>The service is temporarily unavailable. Try again shortly.</value></data>
+  <data name="EpisodeLoadFailedTitle" xml:space="preserve"><value>Patient episode could not be loaded</value></data>
+  <data name="EpisodeLoadFailed" xml:space="preserve"><value>We could not load this patient episode. Try again. If the problem continues, contact support.</value></data>
+  <data name="Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="TerminalEpisodeLateRecording" xml:space="preserve"><value>This episode has ended. Recording and correction controls below remain available for late documentation under the current system rules. Check the episode and patient before saving.</value></data>
+  <data name="PolicyPreviewStale" xml:space="preserve"><value>The draft changed after the preview. Preview again to see the impact of the current draft.</value></data>
+  <data name="PolicyPreviewDraft" xml:space="preserve"><value>Draft version {0}, previewed {1}.</value></data>
+  <data name="BoardRefreshFailed" xml:space="preserve"><value>The escalation board could not be updated. Check your connection and retry.</value></data>
   <data name="NotPermitted" xml:space="preserve">
     <value>Your role does not permit that action.</value>
   </data>

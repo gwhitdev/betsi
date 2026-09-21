@@ -1,4 +1,34 @@
 import { test, expect, signIn, tenantB, axe } from './fixtures';
+import { execFileSync } from 'node:child_process';
+
+function setBrowserTenantDatabase(online: boolean) {
+  const state = online ? 'ONLINE' : 'OFFLINE WITH ROLLBACK IMMEDIATE';
+  execFileSync('docker', ['exec', 'betsi-sqlserver', '/bin/bash', '-lc',
+    `/opt/mssql-tools18/bin/sqlcmd -S localhost -d master -U sa -P "$MSSQL_SA_PASSWORD" -C -b -Q "ALTER DATABASE [betsi_browser_glan_clwyd] SET ${state}"`],
+  { timeout: 20_000 });
+}
+
+test('failed initial episode load is announced and retry recovers', async ({ page, fixtures }) => {
+  test.setTimeout(150_000);
+  const patient = await fixtures.patient();
+  await signIn(page, 'nurse', '/waiting');
+  setBrowserTenantDatabase(false);
+  try {
+    await page.goto(`/episodes/${patient.id}`);
+    await expect(page.getByRole('heading', { name: 'Patient episode could not be loaded' })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Try again');
+    await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    await expect(page.locator('main')).not.toContainText(patient.name);
+  } finally {
+    setBrowserTenantDatabase(true);
+  }
+  await expect.poll(async () => {
+    try { return (await fixtures.get(`/api/v1/episodes/${patient.id}`)).state; }
+    catch { return 'Recovering'; }
+  }, { timeout: 45_000 }).toBe('Waiting');
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect(page.getByRole('heading', { name: patient.name })).toBeVisible();
+});
 
 test('register a patient, record an observation and preserve a correction', async ({ page, fixtures }) => {
   await signIn(page, 'nurse', '/patients/register');
@@ -115,5 +145,34 @@ test('clinical safety and patient flow actions are completed from episode detail
   await page.getByRole('button', { name: 'Discharge patient' }).click();
   await expect(page.getByRole('status')).toHaveText('The patient was discharged.');
   await expect(page.getByText('Discharged', { exact: true })).toBeVisible();
+  await expect(page.getByText('This episode has ended.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Raise deterioration alert' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Begin triage' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save observation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save carer presence' })).toBeVisible();
   await axe(page, 'episode-clinical-flow');
+});
+
+test('a concurrent episode change names the patient and explains recovery', async ({ page, fixtures }) => {
+  const patient = await fixtures.patient();
+  await signIn(page, 'nurse', `/episodes/${patient.id}`);
+  const detail = await fixtures.get(`/api/v1/episodes/${patient.id}`);
+  await fixtures.post(`/api/v1/patients/${patient.id}/triage/begin`, { expectedVersion: detail.version });
+  await page.getByRole('button', { name: 'Begin triage' }).click();
+  await expect(page.getByRole('alert')).toContainText(patient.name);
+  await expect(page.getByRole('alert')).toContainText('Refresh it, review the latest details');
+  await expect(page.getByRole('alert')).not.toContainText('AggregateConcurrencyException');
+});
+
+test('cancelled episodes show late recording but no prohibited deterioration action', async ({ page, fixtures }) => {
+  const patient = await fixtures.patient();
+  const detail = await fixtures.get(`/api/v1/episodes/${patient.id}`);
+  await fixtures.post(`/api/v1/patients/${patient.id}/cancel`, {
+    expectedVersion: detail.version, reason: 'Synthetic cancellation'
+  });
+  await signIn(page, 'nurse', `/episodes/${patient.id}`);
+  await expect(page.getByText('This episode has ended.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Raise deterioration alert' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Begin triage' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save observation' })).toBeVisible();
 });

@@ -15,11 +15,11 @@ integration)** and **I (deployment & operations)** are implemented, and **all of
 [PR #2](https://github.com/gwhitdev/betsi/pull/2) (G) and
 [PR #3](https://github.com/gwhitdev/betsi/pull/3) (I), each merged with CI green.
 
-Phase H's two headline boards are implemented. Subsequent local commits `7a6242a` and
-`4b26a78` add operational follow-through, migration rollback tests and query-load tests.
-Phase F and the expanded Phase H/N3 screens have fresh local build, .NET and browser evidence,
-but their clinical and pilot acceptance remain unfinished. Local verification is not merged
-delivery or clinical approval; see [N4 scope](docs/N4-SCOPE.md) for the precise gaps.
+Phase H's boards and expanded Phase F/H/N3 screens were merged in
+[PR #4](https://github.com/gwhitdev/betsi/pull/4) on 2026-09-21 with required CI green.
+Their clinical and pilot acceptance remain unfinished; see
+[N4 scope](docs/N4-SCOPE.md) for the precise gaps. Before more clinical feature work or a pilot,
+the next tranche is the [UX/UI functionality plan](docs/UX-IMPLEMENTATION-PLAN.md).
 
 Phase C is closed: Phase I added the coverage gate, and `main` is now protected by its three
 required status checks. Protection is status checks only, without a required review — a
@@ -297,6 +297,14 @@ The dated check table above is historical; the 2026-09-21 results are the fresh 
 for this tranche. Each implementation PR must record its own remote verification.
 
 ## Next phases
+
+UX-1 engineering changes are on `feature/ux1-reliable-states`; [verification evidence](docs/UX1-VERIFICATION.md)
+records the 2026-09-21 local checks: **508/508 .NET tests** with no skips, Domain
+**95.8%** and Application **86.6%** coverage, no migration drift, and **42/42 Chromium
+tests**. UX-2 has
+not started. Clinical ownership of late documentation after discharge/cancellation and
+policy ownership of mandatory preview remain explicit decisions; no pilot or manual
+Welsh/accessibility sign-off is implied.
 
 | Phase | Scope | Gate |
 |---|---|---|
