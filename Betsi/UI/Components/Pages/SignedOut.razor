@@ -1,0 +1,8 @@
+@page "/signed-out"
+@attribute [AllowAnonymous]
+@inject IStringLocalizer<Strings> T
+
+<PageTitle>@T["SignOut"]</PageTitle>
+
+<h1>@T["SignOut"]</h1>
+<p>You are signed out. <a href="@UiRoutes.SignIn">Sign in again</a>.</p>

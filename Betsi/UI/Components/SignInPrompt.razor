@@ -1,0 +1,15 @@
+@* Shown instead of a page when the visitor is not signed in. A prompt rather than an automatic
+   redirect: an expired session on a ward screen should say what happened, not silently bounce
+   through an identity provider while someone is reading it. *@
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> T
+
+<h1>@T["SignIn"]</h1>
+<p>@T["SignInRequired"]</p>
+<p>
+    <a class="button" href="@($"{UiRoutes.SignIn}?returnUrl={Uri.EscapeDataString(ReturnUrl)}")">@T["SignIn"]</a>
+</p>
+
+@code {
+    private string ReturnUrl => "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+}

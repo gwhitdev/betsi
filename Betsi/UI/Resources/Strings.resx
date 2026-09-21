@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="SkipToContent" xml:space="preserve">
+    <value>Skip to content</value>
+  </data>
+  <data name="MainNavigation" xml:space="preserve">
+    <value>Main navigation</value>
+  </data>
+  <data name="NavEscalations" xml:space="preserve">
+    <value>Escalations</value>
+  </data>
+  <data name="NavWaiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="UnavailableTitle" xml:space="preserve">
+    <value>This department is unavailable</value>
+  </data>
+  <data name="LiveConnected" xml:space="preserve">
+    <value>Updating live</value>
+  </data>
+  <data name="LiveReconnecting" xml:space="preserve">
+    <value>Reconnecting — times may be out of date</value>
+  </data>
+  <data name="LastUpdated" xml:space="preserve">
+    <value>Last updated {0}</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="EscalationsTitle" xml:space="preserve">
+    <value>Escalation dashboard</value>
+  </data>
+  <data name="EscalationsSummary" xml:space="preserve">
+    <value>Who is waiting past threshold, and who owes a response.</value>
+  </data>
+  <data name="AwaitingAcknowledgement" xml:space="preserve">
+    <value>Awaiting acknowledgement</value>
+  </data>
+  <data name="ActiveEscalations" xml:space="preserve">
+    <value>Acknowledged and active</value>
+  </data>
+  <data name="FollowUpExceptions" xml:space="preserve">
+    <value>Missed deadlines</value>
+  </data>
+  <data name="NoPolicyTitle" xml:space="preserve">
+    <value>No escalation policy is in force</value>
+  </data>
+  <data name="NoPolicyBody" xml:space="preserve">
+    <value>Waiting times are not being escalated automatically. A supervisory user must approve a policy revision.</value>
+  </data>
+  <data name="PolicyInForce" xml:space="preserve">
+    <value>Policy revision {0}, in force since {1}</value>
+  </data>
+  <data name="NothingAwaiting" xml:space="preserve">
+    <value>Nothing is awaiting acknowledgement.</value>
+  </data>
+  <data name="NothingActive" xml:space="preserve">
+    <value>No escalations are active.</value>
+  </data>
+  <data name="NoFollowUps" xml:space="preserve">
+    <value>No deadlines have been missed.</value>
+  </data>
+  <data name="Acknowledge" xml:space="preserve">
+    <value>Acknowledge</value>
+  </data>
+  <data name="Resolve" xml:space="preserve">
+    <value>Resolve</value>
+  </data>
+  <data name="ColumnPatient" xml:space="preserve">
+    <value>Patient</value>
+  </data>
+  <data name="ColumnTier" xml:space="preserve">
+    <value>Tier</value>
+  </data>
+  <data name="ColumnWaited" xml:space="preserve">
+    <value>Waited</value>
+  </data>
+  <data name="ColumnResponsible" xml:space="preserve">
+    <value>Responsible</value>
+  </data>
+  <data name="ColumnDue" xml:space="preserve">
+    <value>Response due</value>
+  </data>
+  <data name="ColumnRaised" xml:space="preserve">
+    <value>Raised</value>
+  </data>
+  <data name="ColumnState" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="ColumnOwner" xml:space="preserve">
+    <value>Owner</value>
+  </data>
+  <data name="Overdue" xml:space="preserve">
+    <value>Overdue</value>
+  </data>
+  <data name="DueIn" xml:space="preserve">
+    <value>Due in {0}</value>
+  </data>
+  <data name="WaitingTitle" xml:space="preserve">
+    <value>Waiting room board</value>
+  </data>
+  <data name="WaitingSummary" xml:space="preserve">
+    <value>Everyone waiting, longest first.</value>
+  </data>
+  <data name="NobodyWaiting" xml:space="preserve">
+    <value>Nobody is waiting.</value>
+  </data>
+  <data name="ColumnArrived" xml:space="preserve">
+    <value>Arrived</value>
+  </data>
+  <data name="ColumnLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="WaitingCount" xml:space="preserve">
+    <value>{0} waiting</value>
+  </data>
+  <data name="LongestWait" xml:space="preserve">
+    <value>Longest wait {0}</value>
+  </data>
+  <data name="ShowMore" xml:space="preserve">
+    <value>Show more</value>
+  </data>
+  <data name="Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="HoursMinutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>That action could not be completed: {0}</value>
+  </data>
+  <data name="NotPermitted" xml:space="preserve">
+    <value>Your role does not permit that action.</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="NotPermittedDetail" xml:space="preserve">
+    <value>Your role ({0}) does not include permission to see this page.</value>
+  </data>
+  <data name="ConnectionLost" xml:space="preserve"><value>The connection to the server was lost. Waiting times on this screen are no longer updating.</value></data>
+  <data name="Reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="SignIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="SignInRequired" xml:space="preserve"><value>You need to sign in to see this page.</value></data>
+  <data name="Waiting" xml:space="preserve"><value>Waiting</value></data>
+  <data name="AwaitingTreatment" xml:space="preserve"><value>Awaiting treatment</value></data>
+  <data name="ActionNotCompleted" xml:space="preserve"><value>The action could not be completed. Check the current board before trying again.</value></data>
+  <data name="NavRegister" xml:space="preserve"><value>Register patient</value></data>
+  <data name="RegisterPatientTitle" xml:space="preserve"><value>Register a patient</value></data>
+  <data name="RegisterPatientSummary" xml:space="preserve"><value>Record an arrival and open a patient episode.</value></data>
+  <data name="FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Date of birth</value></data>
+  <data name="NhsNumber" xml:space="preserve"><value>NHS number</value></data>
+  <data name="NhsNumberHint" xml:space="preserve"><value>Optional. Enter all 10 digits; spaces are allowed.</value></data>
+  <data name="RegisterPatient" xml:space="preserve"><value>Register patient</value></data>
+  <data name="EpisodeTitle" xml:space="preserve"><value>Patient episode</value></data>
+  <data name="EpisodeNotFound" xml:space="preserve"><value>Patient episode not found</value></data>
+  <data name="BackToWaiting" xml:space="preserve"><value>Return to the waiting room board</value></data>
+  <data name="EpisodeSummary" xml:space="preserve"><value>{0}, age {1}</value></data>
+  <data name="PatientIdentifiers" xml:space="preserve"><value>Patient identifiers</value></data>
+  <data name="NotRecorded" xml:space="preserve"><value>Not recorded</value></data>
+  <data name="Arrived" xml:space="preserve"><value>Arrived</value></data>
+  <data name="EpisodeState" xml:space="preserve"><value>Episode state</value></data>
+  <data name="RecordObservation" xml:space="preserve"><value>Record observations</value></data>
+  <data name="CorrectObservation" xml:space="preserve"><value>Correct an observation</value></data>
+  <data name="ConfirmIdentityInstruction" xml:space="preserve"><value>Check the patient identifiers above before recording measurements.</value></data>
+  <data name="ObservationKind" xml:space="preserve"><value>Observation type</value></data>
+  <data name="Routine" xml:space="preserve"><value>Routine</value></data>
+  <data name="Triage" xml:space="preserve"><value>Triage</value></data>
+  <data name="Concern" xml:space="preserve"><value>Concern</value></data>
+  <data name="RespiratoryRate" xml:space="preserve"><value>Respiratory rate</value></data>
+  <data name="OxygenSaturation" xml:space="preserve"><value>Oxygen saturation</value></data>
+  <data name="SupplementalOxygen" xml:space="preserve"><value>Receiving supplemental oxygen</value></data>
+  <data name="SystolicPressure" xml:space="preserve"><value>Systolic blood pressure</value></data>
+  <data name="Pulse" xml:space="preserve"><value>Pulse</value></data>
+  <data name="Consciousness" xml:space="preserve"><value>Consciousness (ACVPU)</value></data>
+  <data name="Temperature" xml:space="preserve"><value>Temperature</value></data>
+  <data name="PainScore" xml:space="preserve"><value>Pain score</value></data>
+  <data name="PainScale" xml:space="preserve"><value>Pain scale</value></data>
+  <data name="Notes" xml:space="preserve"><value>Clinical notes</value></data>
+  <data name="IdentityConfirmed" xml:space="preserve"><value>I have confirmed this is {0} {1}, born {2}.</value></data>
+  <data name="IdentityConfirmationRequired" xml:space="preserve"><value>Confirm the patient identifiers before saving this observation.</value></data>
+  <data name="SaveObservation" xml:space="preserve"><value>Save observation</value></data>
+  <data name="CancelCorrection" xml:space="preserve"><value>Cancel correction</value></data>
+  <data name="ObservationHistory" xml:space="preserve"><value>Observation history</value></data>
+  <data name="ObservationHistoryNotPermitted" xml:space="preserve"><value>Your role cannot view clinical observations.</value></data>
+  <data name="NoObservations" xml:space="preserve"><value>No observations have been recorded.</value></data>
+  <data name="Superseded" xml:space="preserve"><value>Superseded</value></data>
+  <data name="Correction" xml:space="preserve"><value>Correction</value></data>
+  <data name="RecordedBy" xml:space="preserve"><value>Recorded by {0}</value></data>
+  <data name="Correct" xml:space="preserve"><value>Correct</value></data>
+  <data name="EarlyWarningScore" xml:space="preserve"><value>Early warning score</value></data>
+  <data name="ObservationSaved" xml:space="preserve"><value>The observation was saved.</value></data>
+  <data name="Alert" xml:space="preserve"><value>Alert</value></data>
+  <data name="NewConfusion" xml:space="preserve"><value>New confusion</value></data>
+  <data name="RespondsToVoice" xml:space="preserve"><value>Responds to voice</value></data>
+  <data name="RespondsToPain" xml:space="preserve"><value>Responds to pain</value></data>
+  <data name="Unresponsive" xml:space="preserve"><value>Unresponsive</value></data>
+  <data name="NumericRating" xml:space="preserve"><value>Numeric rating</value></data>
+  <data name="Faces" xml:space="preserve"><value>FACES</value></data>
+  <data name="Flacc" xml:space="preserve"><value>FLACC</value></data>
+  <data name="InTriage" xml:space="preserve"><value>In triage</value></data>
+  <data name="InTreatment" xml:space="preserve"><value>In treatment</value></data>
+  <data name="Discharged" xml:space="preserve"><value>Discharged</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="NavPolicy" xml:space="preserve"><value>Escalation policy</value></data>
+  <data name="PolicyTitle" xml:space="preserve"><value>Escalation policy</value></data>
+  <data name="PolicySummary" xml:space="preserve"><value>Propose, preview and independently approve waiting-time thresholds.</value></data>
+  <data name="PolicyInForceHeading" xml:space="preserve"><value>Policy in force</value></data>
+  <data name="ProposePolicy" xml:space="preserve"><value>Propose a new revision</value></data>
+  <data name="AutomaticEscalationEnabled" xml:space="preserve"><value>Enable automatic waiting-time escalation</value></data>
+  <data name="TierNumber" xml:space="preserve"><value>Tier {0}</value></data>
+  <data name="ThresholdMinutes" xml:space="preserve"><value>Threshold (minutes)</value></data>
+  <data name="ResponsibleRole" xml:space="preserve"><value>Responsible role</value></data>
+  <data name="AcknowledgementDeadline" xml:space="preserve"><value>Acknowledgement deadline (minutes)</value></data>
+  <data name="RecommendedAction" xml:space="preserve"><value>Recommended action</value></data>
+  <data name="RemoveTier" xml:space="preserve"><value>Remove tier</value></data>
+  <data name="AddTier" xml:space="preserve"><value>Add tier</value></data>
+  <data name="FollowUpOwner" xml:space="preserve"><value>Missed-deadline follow-up owner</value></data>
+  <data name="ProposalReason" xml:space="preserve"><value>Reason for change</value></data>
+  <data name="PreviewPolicy" xml:space="preserve"><value>Preview impact</value></data>
+  <data name="SubmitProposal" xml:space="preserve"><value>Submit proposal</value></data>
+  <data name="PolicyPreview" xml:space="preserve"><value>Policy impact preview</value></data>
+  <data name="PatientsWaitingPreview" xml:space="preserve"><value>{0} patients are currently waiting.</value></data>
+  <data name="PatientsReached" xml:space="preserve"><value>Patients at threshold</value></data>
+  <data name="NewEscalations" xml:space="preserve"><value>Would be newly escalated</value></data>
+  <data name="PolicyHistory" xml:space="preserve"><value>Revision history</value></data>
+  <data name="NoPolicyRevisions" xml:space="preserve"><value>No policy revisions have been proposed.</value></data>
+  <data name="DecisionReason" xml:space="preserve"><value>Decision or withdrawal reason</value></data>
+  <data name="Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="Reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="Withdraw" xml:space="preserve"><value>Withdraw</value></data>
+  <data name="RestorationReason" xml:space="preserve"><value>Reason for restoring this revision</value></data>
+  <data name="RestoreRevision" xml:space="preserve"><value>Propose restoration</value></data>
+  <data name="PolicyProposed" xml:space="preserve"><value>The policy revision was proposed and now requires independent approval.</value></data>
+  <data name="PolicyApproved" xml:space="preserve"><value>The policy revision was approved.</value></data>
+  <data name="PolicyRejected" xml:space="preserve"><value>The policy revision was rejected.</value></data>
+  <data name="PolicyWithdrawn" xml:space="preserve"><value>The policy revision was withdrawn.</value></data>
+  <data name="RestorationProposed" xml:space="preserve"><value>A restoration revision was proposed.</value></data>
+  <data name="PolicyRevision" xml:space="preserve"><value>Revision {0}</value></data>
+  <data name="CurrentlyInForce" xml:space="preserve"><value>Currently in force</value></data>
+  <data name="RestoresRevision" xml:space="preserve"><value>Restores revision {0}</value></data>
+  <data name="ProposedBy" xml:space="preserve"><value>Proposed by {0} at {1}</value></data>
+  <data name="PolicyDisabled" xml:space="preserve"><value>Automatic escalation is disabled by this revision.</value></data>
+  <data name="DecidedBy" xml:space="preserve"><value>Decided by {0} at {1}</value></data>
+  <data name="Proposed" xml:space="preserve"><value>Proposed</value></data>
+  <data name="Approved" xml:space="preserve"><value>Approved</value></data>
+  <data name="Rejected" xml:space="preserve"><value>Rejected</value></data>
+  <data name="Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
+  <data name="Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Reassign" xml:space="preserve"><value>Reassign</value></data>
+  <data name="ReassignmentReason" xml:space="preserve"><value>Reason for reassignment</value></data>
+  <data name="ViewHistory" xml:space="preserve"><value>View history</value></data>
+  <data name="CloseFollowUp" xml:space="preserve"><value>Close follow-up</value></data>
+  <data name="ReviewOutcome" xml:space="preserve"><value>Review outcome</value></data>
+  <data name="ReviewNotes" xml:space="preserve"><value>Review notes</value></data>
+  <data name="RecentEscalationHistory" xml:space="preserve"><value>Recent escalation history</value></data>
+  <data name="NoEscalationHistory" xml:space="preserve"><value>No recently completed escalations.</value></data>
+  <data name="EscalationAuditTrail" xml:space="preserve"><value>Escalation audit trail</value></data>
+  <data name="ColumnTime" xml:space="preserve"><value>Time</value></data>
+  <data name="ColumnEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="ColumnActorRole" xml:space="preserve"><value>Actor role</value></data>
+  <data name="AcknowledgedLate" xml:space="preserve"><value>Acknowledged late</value></data>
+  <data name="Reassigned" xml:space="preserve"><value>Reassigned</value></data>
+  <data name="NoFurtherActionRequired" xml:space="preserve"><value>No further action required</value></data>
+  <data name="IncidentReported" xml:space="preserve"><value>Incident reported</value></data>
+  <data name="Other" xml:space="preserve"><value>Other</value></data>
+  <data name="Created" xml:space="preserve"><value>Created</value></data>
+  <data name="Acknowledged" xml:space="preserve"><value>Acknowledged</value></data>
+  <data name="Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Escalated" xml:space="preserve"><value>Escalated</value></data>
+  <data name="ManualFollowUp" xml:space="preserve"><value>Manual follow-up</value></data>
+  <data name="Closed" xml:space="preserve"><value>Closed</value></data>
+  <data name="EscalationCreated" xml:space="preserve"><value>Escalation created</value></data>
+  <data name="EscalationAcknowledged" xml:space="preserve"><value>Escalation acknowledged</value></data>
+  <data name="EscalationResolved" xml:space="preserve"><value>Escalation resolved</value></data>
+  <data name="EscalationReassigned" xml:space="preserve"><value>Escalation reassigned</value></data>
+  <data name="EscalationEscalatedFurther" xml:space="preserve"><value>Escalation raised to the next tier</value></data>
+  <data name="EscalationMarkedForManualFollowUp" xml:space="preserve"><value>Manual follow-up opened</value></data>
+  <data name="EscalationClosed" xml:space="preserve"><value>Escalation closed</value></data>
+  <data name="FollowUpExceptionRaised" xml:space="preserve"><value>Follow-up exception raised</value></data>
+  <data name="FollowUpExceptionClosed" xml:space="preserve"><value>Follow-up exception closed</value></data>
+  <data name="ClinicalSafety" xml:space="preserve"><value>Clinical safety</value></data>
+  <data name="CarerPresence" xml:space="preserve"><value>Carer presence</value></data>
+  <data name="SafeguardingConcern" xml:space="preserve"><value>Safeguarding concern</value></data>
+  <data name="DeteriorationFlag" xml:space="preserve"><value>Deterioration flag</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
+  <data name="Present" xml:space="preserve"><value>Present</value></data>
+  <data name="NotPresent" xml:space="preserve"><value>Not present</value></data>
+  <data name="RecordCarerPresence" xml:space="preserve"><value>Record carer presence</value></data>
+  <data name="CarerPresent" xml:space="preserve"><value>A carer is present</value></data>
+  <data name="CarerName" xml:space="preserve"><value>Carer name</value></data>
+  <data name="CarerRelationship" xml:space="preserve"><value>Relationship to patient</value></data>
+  <data name="SaveCarerPresence" xml:space="preserve"><value>Save carer presence</value></data>
+  <data name="RaiseSafeguardingConcern" xml:space="preserve"><value>Raise a safeguarding concern</value></data>
+  <data name="ConcernReason" xml:space="preserve"><value>What was observed</value></data>
+  <data name="RaiseConcern" xml:space="preserve"><value>Raise concern</value></data>
+  <data name="FlagDeterioration" xml:space="preserve"><value>Flag patient deterioration</value></data>
+  <data name="DeteriorationReason" xml:space="preserve"><value>What deterioration was observed</value></data>
+  <data name="RaiseDeteriorationAlert" xml:space="preserve"><value>Raise deterioration alert</value></data>
+  <data name="CarerPresenceSaved" xml:space="preserve"><value>Carer presence was recorded.</value></data>
+  <data name="SafeguardingRaised" xml:space="preserve"><value>The safeguarding concern was raised and assigned for response.</value></data>
+  <data name="DeteriorationRaised" xml:space="preserve"><value>The deterioration alert was raised and assigned for response.</value></data>
+  <data name="PatientFlowActions" xml:space="preserve"><value>Patient flow</value></data>
+  <data name="BeginTriage" xml:space="preserve"><value>Begin triage</value></data>
+  <data name="CompleteTriage" xml:space="preserve"><value>Complete triage</value></data>
+  <data name="BeginTreatment" xml:space="preserve"><value>Begin treatment</value></data>
+  <data name="TreatmentLocation" xml:space="preserve"><value>Treatment location</value></data>
+  <data name="SelectLocation" xml:space="preserve"><value>Select a location</value></data>
+  <data name="LocationWithSpaces" xml:space="preserve"><value>{0} ({1} spaces available)</value></data>
+  <data name="DischargePatient" xml:space="preserve"><value>Discharge patient</value></data>
+  <data name="DischargeNotes" xml:space="preserve"><value>Discharge notes</value></data>
+  <data name="ConfirmDischarge" xml:space="preserve"><value>I confirm that {0} {1} is ready to be discharged</value></data>
+  <data name="TriageStarted" xml:space="preserve"><value>Triage was started.</value></data>
+  <data name="TriageCompleted" xml:space="preserve"><value>Triage was completed.</value></data>
+  <data name="TreatmentStarted" xml:space="preserve"><value>The patient was moved into treatment.</value></data>
+  <data name="PatientDischarged" xml:space="preserve"><value>The patient was discharged.</value></data>
+  <data name="PainLocation" xml:space="preserve"><value>Pain location</value></data>
+  <data name="PainCharacter" xml:space="preserve"><value>Pain character</value></data>
+  <data name="PainOnset" xml:space="preserve"><value>Pain onset</value></data>
+  <data name="AssignedClinicalStaff" xml:space="preserve"><value>Assigned clinical staff</value></data>
+  <data name="PaediatricTraining" xml:space="preserve"><value>Paediatric training</value></data>
+  <data name="PaediatricStaffAssignment" xml:space="preserve"><value>Paediatric staff assignment</value></data>
+  <data name="AssignSelfDescription" xml:space="preserve"><value>Assign {0} as the responsible clinician, working as {1}.</value></data>
+  <data name="PaediatricTrainedDeclaration" xml:space="preserve"><value>I have recorded paediatric training for this work</value></data>
+  <data name="AssignMyself" xml:space="preserve"><value>Assign myself</value></data>
+  <data name="NotAssigned" xml:space="preserve"><value>Not assigned</value></data>
+  <data name="TrainingRecorded" xml:space="preserve"><value>Training recorded</value></data>
+  <data name="TrainingNotRecorded" xml:space="preserve"><value>Training not recorded — charge nurse alerted</value></data>
+  <data name="StaffAssignmentSaved" xml:space="preserve"><value>The clinical staff assignment was recorded.</value></data>
+  <data name="ObservationSource" xml:space="preserve"><value>Observation source</value></data>
+  <data name="NursingAssessment" xml:space="preserve"><value>Nursing assessment</value></data>
+  <data name="MedicalReview" xml:space="preserve"><value>Medical review</value></data>
+  <data name="TriageAssessment" xml:space="preserve"><value>Triage assessment</value></data>
+  <data name="ClinicalHandover" xml:space="preserve"><value>Clinical handover</value></data>
+  <data name="OtherClinicalAssessment" xml:space="preserve"><value>Other clinical assessment</value></data>
+  <data name="SbarAssessment" xml:space="preserve"><value>SBAR assessment</value></data>
+  <data name="SbarSituation" xml:space="preserve"><value>Situation</value></data>
+  <data name="SbarBackground" xml:space="preserve"><value>Background</value></data>
+  <data name="SbarAssessmentSection" xml:space="preserve"><value>Assessment</value></data>
+  <data name="SbarRecommendation" xml:space="preserve"><value>Recommendation</value></data>
+  <data name="Breathing" xml:space="preserve"><value>Breathing finding</value></data>
+  <data name="Circulation" xml:space="preserve"><value>Circulation finding</value></data>
+  <data name="Mobility" xml:space="preserve"><value>Mobility finding</value></data>
+  <data name="AssessmentDetails" xml:space="preserve"><value>{0} details</value></data>
+  <data name="NoConcern" xml:space="preserve"><value>No concern identified</value></data>
+  <data name="UnableToAssess" xml:space="preserve"><value>Unable to assess</value></data>
+</root>

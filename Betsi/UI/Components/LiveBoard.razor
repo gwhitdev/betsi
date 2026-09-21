@@ -1,0 +1,61 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject IStringLocalizer<Strings> T
+
+<p class="live-status @(_connected ? "live-status--on" : "live-status--off")"
+   role="status" aria-live="polite">
+    @(_connected ? T["LiveConnected"] : T["LiveReconnecting"])
+    <span class="live-status__time">@T["LastUpdated", UpdatedAt.ToLocalTime().ToString("HH:mm:ss")]</span>
+    <button type="button" class="button button--quiet" @onclick="RefreshAsync">@T["Refresh"]</button>
+</p>
+
+@code {
+    [Parameter, EditorRequired] public EventCallback OnChanged { get; set; }
+    [Parameter] public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    private bool _connected;
+    private IJSObjectReference? _subscription;
+    private DotNetObjectReference<LiveBoard>? _reference;
+
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive) return;
+        _reference = DotNetObjectReference.Create(this);
+        // The browser's HttpOnly cookie authenticates this connection. A .NET client in
+        // the server circuit has no copy of that cookie.
+        _subscription = await JS.InvokeAsync<IJSObjectReference>("betsiBoards.subscribe", _reference);
+    }
+
+    [JSInvokable]
+    public Task Changed() => InvokeAsync(RefreshAsync);
+
+    [JSInvokable]
+    public Task ConnectionChanged(bool connected) => InvokeAsync(async () =>
+    {
+        _connected = connected;
+        if (connected) await RefreshAsync();
+        StateHasChanged();
+    });
+
+    private async Task RefreshAsync()
+    {
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_subscription is not null)
+            {
+                await _subscription.InvokeVoidAsync("dispose");
+                await _subscription.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        finally { _reference?.Dispose(); }
+    }
+}

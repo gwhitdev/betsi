@@ -1,0 +1,13 @@
+{
+  "name": "betsi-ui-checks",
+  "private": true,
+  "scripts": {
+    "test:ui": "playwright test",
+    "vendor:signalr": "node tools/vendor-signalr.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.13.0",
+    "@microsoft/signalr": "10.0.11"
+  }
+}

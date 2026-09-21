@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="SkipToContent" xml:space="preserve">
+    <value>Neidio i'r cynnwys</value>
+  </data>
+  <data name="MainNavigation" xml:space="preserve">
+    <value>Prif lywio</value>
+  </data>
+  <data name="NavEscalations" xml:space="preserve">
+    <value>Uwchgyfeiriadau</value>
+  </data>
+  <data name="NavWaiting" xml:space="preserve">
+    <value>Aros</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Allgofnodi</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Iaith</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>Newid</value>
+  </data>
+  <data name="UnavailableTitle" xml:space="preserve">
+    <value>Nid yw'r adran hon ar gael</value>
+  </data>
+  <data name="LiveConnected" xml:space="preserve">
+    <value>Yn diweddaru'n fyw</value>
+  </data>
+  <data name="LiveReconnecting" xml:space="preserve">
+    <value>Ailgysylltu — efallai nad yw'r amseroedd yn gyfredol</value>
+  </data>
+  <data name="LastUpdated" xml:space="preserve">
+    <value>Diweddarwyd ddiwethaf {0}</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Adnewyddu</value>
+  </data>
+  <data name="EscalationsTitle" xml:space="preserve">
+    <value>Dangosfwrdd uwchgyfeirio</value>
+  </data>
+  <data name="EscalationsSummary" xml:space="preserve">
+    <value>Pwy sy'n aros y tu hwnt i'r trothwy, a phwy sy'n ddyledus i ymateb.</value>
+  </data>
+  <data name="AwaitingAcknowledgement" xml:space="preserve">
+    <value>Yn aros am gydnabyddiaeth</value>
+  </data>
+  <data name="ActiveEscalations" xml:space="preserve">
+    <value>Wedi'u cydnabod ac yn weithredol</value>
+  </data>
+  <data name="FollowUpExceptions" xml:space="preserve">
+    <value>Terfynau amser a gollwyd</value>
+  </data>
+  <data name="NoPolicyTitle" xml:space="preserve">
+    <value>Nid oes polisi uwchgyfeirio mewn grym</value>
+  </data>
+  <data name="NoPolicyBody" xml:space="preserve">
+    <value>Nid yw amseroedd aros yn cael eu huwchgyfeirio'n awtomatig. Rhaid i ddefnyddiwr goruchwyliol gymeradwyo diwygiad polisi.</value>
+  </data>
+  <data name="PolicyInForce" xml:space="preserve">
+    <value>Diwygiad polisi {0}, mewn grym ers {1}</value>
+  </data>
+  <data name="NothingAwaiting" xml:space="preserve">
+    <value>Nid oes dim yn aros am gydnabyddiaeth.</value>
+  </data>
+  <data name="NothingActive" xml:space="preserve">
+    <value>Nid oes uwchgyfeiriadau'n weithredol.</value>
+  </data>
+  <data name="NoFollowUps" xml:space="preserve">
+    <value>Ni chollwyd unrhyw derfynau amser.</value>
+  </data>
+  <data name="Acknowledge" xml:space="preserve">
+    <value>Cydnabod</value>
+  </data>
+  <data name="Resolve" xml:space="preserve">
+    <value>Datrys</value>
+  </data>
+  <data name="ColumnPatient" xml:space="preserve">
+    <value>Claf</value>
+  </data>
+  <data name="ColumnTier" xml:space="preserve">
+    <value>Haen</value>
+  </data>
+  <data name="ColumnWaited" xml:space="preserve">
+    <value>Wedi aros</value>
+  </data>
+  <data name="ColumnResponsible" xml:space="preserve">
+    <value>Cyfrifol</value>
+  </data>
+  <data name="ColumnDue" xml:space="preserve">
+    <value>Ymateb yn ddyledus</value>
+  </data>
+  <data name="ColumnRaised" xml:space="preserve">
+    <value>Codwyd</value>
+  </data>
+  <data name="ColumnState" xml:space="preserve">
+    <value>Cyflwr</value>
+  </data>
+  <data name="ColumnOwner" xml:space="preserve">
+    <value>Perchennog</value>
+  </data>
+  <data name="Overdue" xml:space="preserve">
+    <value>Hwyr</value>
+  </data>
+  <data name="DueIn" xml:space="preserve">
+    <value>Yn ddyledus ymhen {0}</value>
+  </data>
+  <data name="WaitingTitle" xml:space="preserve">
+    <value>Bwrdd ystafell aros</value>
+  </data>
+  <data name="WaitingSummary" xml:space="preserve">
+    <value>Pawb sy'n aros, yr hiraf yn gyntaf.</value>
+  </data>
+  <data name="NobodyWaiting" xml:space="preserve">
+    <value>Nid oes neb yn aros.</value>
+  </data>
+  <data name="ColumnArrived" xml:space="preserve">
+    <value>Cyrhaeddodd</value>
+  </data>
+  <data name="ColumnLocation" xml:space="preserve">
+    <value>Lleoliad</value>
+  </data>
+  <data name="WaitingCount" xml:space="preserve">
+    <value>{0} yn aros</value>
+  </data>
+  <data name="LongestWait" xml:space="preserve">
+    <value>Yr arhosiad hiraf {0}</value>
+  </data>
+  <data name="ShowMore" xml:space="preserve">
+    <value>Dangos mwy</value>
+  </data>
+  <data name="Minutes" xml:space="preserve">
+    <value>{0} mun</value>
+  </data>
+  <data name="HoursMinutes" xml:space="preserve">
+    <value>{0}a {1}m</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>Ni ellid cwblhau'r weithred honno: {0}</value>
+  </data>
+  <data name="NotPermitted" xml:space="preserve">
+    <value>Nid yw eich rôl yn caniatáu'r weithred honno.</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Yn llwytho…</value>
+  </data>
+  <data name="NotPermittedDetail" xml:space="preserve">
+    <value>Nid yw eich rôl ({0}) yn cynnwys caniatâd i weld y dudalen hon.</value>
+  </data>
+  <data name="ConnectionLost" xml:space="preserve"><value>Collwyd y cysylltiad â'r gweinydd. Nid yw'r amseroedd aros ar y sgrin hon yn diweddaru mwyach.</value></data>
+  <data name="Reload" xml:space="preserve"><value>Ail-lwytho</value></data>
+  <data name="SignIn" xml:space="preserve"><value>Mewngofnodi</value></data>
+  <data name="SignInRequired" xml:space="preserve"><value>Mae angen i chi fewngofnodi i weld y dudalen hon.</value></data>
+  <data name="Waiting" xml:space="preserve"><value>Yn aros</value></data>
+  <data name="AwaitingTreatment" xml:space="preserve"><value>Yn aros am driniaeth</value></data>
+  <data name="ActionNotCompleted" xml:space="preserve"><value>Ni ellid cwblhau'r weithred. Gwiriwch y bwrdd presennol cyn rhoi cynnig arall arni.</value></data>
+  <data name="NavRegister" xml:space="preserve"><value>Cofrestru claf</value></data>
+  <data name="RegisterPatientTitle" xml:space="preserve"><value>Cofrestru claf</value></data>
+  <data name="RegisterPatientSummary" xml:space="preserve"><value>Cofnodwch ddyfodiad ac agorwch bennod claf.</value></data>
+  <data name="FirstName" xml:space="preserve"><value>Enw cyntaf</value></data>
+  <data name="LastName" xml:space="preserve"><value>Cyfenw</value></data>
+  <data name="DateOfBirth" xml:space="preserve"><value>Dyddiad geni</value></data>
+  <data name="NhsNumber" xml:space="preserve"><value>Rhif GIG</value></data>
+  <data name="NhsNumberHint" xml:space="preserve"><value>Dewisol. Rhowch bob un o'r 10 digid; caniateir bylchau.</value></data>
+  <data name="RegisterPatient" xml:space="preserve"><value>Cofrestru claf</value></data>
+  <data name="EpisodeTitle" xml:space="preserve"><value>Pennod claf</value></data>
+  <data name="EpisodeNotFound" xml:space="preserve"><value>Ni chanfuwyd pennod y claf</value></data>
+  <data name="BackToWaiting" xml:space="preserve"><value>Dychwelyd i fwrdd yr ystafell aros</value></data>
+  <data name="EpisodeSummary" xml:space="preserve"><value>{0}, {1} oed</value></data>
+  <data name="PatientIdentifiers" xml:space="preserve"><value>Dynodwyr y claf</value></data>
+  <data name="NotRecorded" xml:space="preserve"><value>Heb ei gofnodi</value></data>
+  <data name="Arrived" xml:space="preserve"><value>Cyrhaeddodd</value></data>
+  <data name="EpisodeState" xml:space="preserve"><value>Cyflwr y bennod</value></data>
+  <data name="RecordObservation" xml:space="preserve"><value>Cofnodi arsylwadau</value></data>
+  <data name="CorrectObservation" xml:space="preserve"><value>Cywiro arsylwad</value></data>
+  <data name="ConfirmIdentityInstruction" xml:space="preserve"><value>Gwiriwch ddynodwyr y claf uchod cyn cofnodi mesuriadau.</value></data>
+  <data name="ObservationKind" xml:space="preserve"><value>Math o arsylwad</value></data>
+  <data name="Routine" xml:space="preserve"><value>Arferol</value></data>
+  <data name="Triage" xml:space="preserve"><value>Blaenoriaethu</value></data>
+  <data name="Concern" xml:space="preserve"><value>Pryder</value></data>
+  <data name="RespiratoryRate" xml:space="preserve"><value>Cyfradd anadlu</value></data>
+  <data name="OxygenSaturation" xml:space="preserve"><value>Dirlawnder ocsigen</value></data>
+  <data name="SupplementalOxygen" xml:space="preserve"><value>Yn cael ocsigen atodol</value></data>
+  <data name="SystolicPressure" xml:space="preserve"><value>Pwysedd gwaed systolig</value></data>
+  <data name="Pulse" xml:space="preserve"><value>Pwls</value></data>
+  <data name="Consciousness" xml:space="preserve"><value>Ymwybyddiaeth (ACVPU)</value></data>
+  <data name="Temperature" xml:space="preserve"><value>Tymheredd</value></data>
+  <data name="PainScore" xml:space="preserve"><value>Sgôr poen</value></data>
+  <data name="PainScale" xml:space="preserve"><value>Graddfa boen</value></data>
+  <data name="Notes" xml:space="preserve"><value>Nodiadau clinigol</value></data>
+  <data name="IdentityConfirmed" xml:space="preserve"><value>Rwyf wedi cadarnhau mai {0} {1} yw hwn, ganwyd {2}.</value></data>
+  <data name="IdentityConfirmationRequired" xml:space="preserve"><value>Cadarnhewch ddynodwyr y claf cyn cadw'r arsylwad hwn.</value></data>
+  <data name="SaveObservation" xml:space="preserve"><value>Cadw'r arsylwad</value></data>
+  <data name="CancelCorrection" xml:space="preserve"><value>Canslo'r cywiriad</value></data>
+  <data name="ObservationHistory" xml:space="preserve"><value>Hanes arsylwadau</value></data>
+  <data name="ObservationHistoryNotPermitted" xml:space="preserve"><value>Ni all eich rôl weld arsylwadau clinigol.</value></data>
+  <data name="NoObservations" xml:space="preserve"><value>Nid oes arsylwadau wedi'u cofnodi.</value></data>
+  <data name="Superseded" xml:space="preserve"><value>Wedi'i ddisodli</value></data>
+  <data name="Correction" xml:space="preserve"><value>Cywiriad</value></data>
+  <data name="RecordedBy" xml:space="preserve"><value>Cofnodwyd gan {0}</value></data>
+  <data name="Correct" xml:space="preserve"><value>Cywiro</value></data>
+  <data name="EarlyWarningScore" xml:space="preserve"><value>Sgôr rhybudd cynnar</value></data>
+  <data name="ObservationSaved" xml:space="preserve"><value>Cadwyd yr arsylwad.</value></data>
+  <data name="Alert" xml:space="preserve"><value>Effro</value></data>
+  <data name="NewConfusion" xml:space="preserve"><value>Dryswch newydd</value></data>
+  <data name="RespondsToVoice" xml:space="preserve"><value>Yn ymateb i lais</value></data>
+  <data name="RespondsToPain" xml:space="preserve"><value>Yn ymateb i boen</value></data>
+  <data name="Unresponsive" xml:space="preserve"><value>Dim ymateb</value></data>
+  <data name="NumericRating" xml:space="preserve"><value>Gradd rifiadol</value></data>
+  <data name="Faces" xml:space="preserve"><value>FACES</value></data>
+  <data name="Flacc" xml:space="preserve"><value>FLACC</value></data>
+  <data name="InTriage" xml:space="preserve"><value>Wrthi'n cael ei flaenoriaethu</value></data>
+  <data name="InTreatment" xml:space="preserve"><value>Yn cael triniaeth</value></data>
+  <data name="Discharged" xml:space="preserve"><value>Wedi'i ryddhau</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Wedi'i ganslo</value></data>
+  <data name="NavPolicy" xml:space="preserve"><value>Polisi uwchgyfeirio</value></data>
+  <data name="PolicyTitle" xml:space="preserve"><value>Polisi uwchgyfeirio</value></data>
+  <data name="PolicySummary" xml:space="preserve"><value>Cynigiwch, rhagolygwch a chymeradwywch drothwyon amser aros yn annibynnol.</value></data>
+  <data name="PolicyInForceHeading" xml:space="preserve"><value>Polisi mewn grym</value></data>
+  <data name="ProposePolicy" xml:space="preserve"><value>Cynnig diwygiad newydd</value></data>
+  <data name="AutomaticEscalationEnabled" xml:space="preserve"><value>Galluogi uwchgyfeirio amser aros awtomatig</value></data>
+  <data name="TierNumber" xml:space="preserve"><value>Haen {0}</value></data>
+  <data name="ThresholdMinutes" xml:space="preserve"><value>Trothwy (munudau)</value></data>
+  <data name="ResponsibleRole" xml:space="preserve"><value>Rôl gyfrifol</value></data>
+  <data name="AcknowledgementDeadline" xml:space="preserve"><value>Terfyn amser cydnabod (munudau)</value></data>
+  <data name="RecommendedAction" xml:space="preserve"><value>Cam gweithredu a argymhellir</value></data>
+  <data name="RemoveTier" xml:space="preserve"><value>Tynnu'r haen</value></data>
+  <data name="AddTier" xml:space="preserve"><value>Ychwanegu haen</value></data>
+  <data name="FollowUpOwner" xml:space="preserve"><value>Perchennog dilyniant terfyn amser a gollwyd</value></data>
+  <data name="ProposalReason" xml:space="preserve"><value>Rheswm dros y newid</value></data>
+  <data name="PreviewPolicy" xml:space="preserve"><value>Rhagolwg o'r effaith</value></data>
+  <data name="SubmitProposal" xml:space="preserve"><value>Cyflwyno'r cynnig</value></data>
+  <data name="PolicyPreview" xml:space="preserve"><value>Rhagolwg o effaith y polisi</value></data>
+  <data name="PatientsWaitingPreview" xml:space="preserve"><value>Mae {0} o gleifion yn aros ar hyn o bryd.</value></data>
+  <data name="PatientsReached" xml:space="preserve"><value>Cleifion wrth y trothwy</value></data>
+  <data name="NewEscalations" xml:space="preserve"><value>Uwchgyfeiriadau newydd posibl</value></data>
+  <data name="PolicyHistory" xml:space="preserve"><value>Hanes diwygiadau</value></data>
+  <data name="NoPolicyRevisions" xml:space="preserve"><value>Nid oes diwygiadau polisi wedi'u cynnig.</value></data>
+  <data name="DecisionReason" xml:space="preserve"><value>Rheswm dros y penderfyniad neu'r tynnu'n ôl</value></data>
+  <data name="Approve" xml:space="preserve"><value>Cymeradwyo</value></data>
+  <data name="Reject" xml:space="preserve"><value>Gwrthod</value></data>
+  <data name="Withdraw" xml:space="preserve"><value>Tynnu'n ôl</value></data>
+  <data name="RestorationReason" xml:space="preserve"><value>Rheswm dros adfer y diwygiad hwn</value></data>
+  <data name="RestoreRevision" xml:space="preserve"><value>Cynnig adferiad</value></data>
+  <data name="PolicyProposed" xml:space="preserve"><value>Cynigiwyd y diwygiad polisi ac mae angen cymeradwyaeth annibynnol arno.</value></data>
+  <data name="PolicyApproved" xml:space="preserve"><value>Cymeradwywyd y diwygiad polisi.</value></data>
+  <data name="PolicyRejected" xml:space="preserve"><value>Gwrthodwyd y diwygiad polisi.</value></data>
+  <data name="PolicyWithdrawn" xml:space="preserve"><value>Tynnwyd y diwygiad polisi yn ôl.</value></data>
+  <data name="RestorationProposed" xml:space="preserve"><value>Cynigiwyd diwygiad adfer.</value></data>
+  <data name="PolicyRevision" xml:space="preserve"><value>Diwygiad {0}</value></data>
+  <data name="CurrentlyInForce" xml:space="preserve"><value>Mewn grym ar hyn o bryd</value></data>
+  <data name="RestoresRevision" xml:space="preserve"><value>Yn adfer diwygiad {0}</value></data>
+  <data name="ProposedBy" xml:space="preserve"><value>Cynigiwyd gan {0} am {1}</value></data>
+  <data name="PolicyDisabled" xml:space="preserve"><value>Mae uwchgyfeirio awtomatig wedi'i analluogi gan y diwygiad hwn.</value></data>
+  <data name="DecidedBy" xml:space="preserve"><value>Penderfynwyd gan {0} am {1}</value></data>
+  <data name="Proposed" xml:space="preserve"><value>Wedi'i gynnig</value></data>
+  <data name="Approved" xml:space="preserve"><value>Wedi'i gymeradwyo</value></data>
+  <data name="Rejected" xml:space="preserve"><value>Wedi'i wrthod</value></data>
+  <data name="Withdrawn" xml:space="preserve"><value>Wedi'i dynnu'n ôl</value></data>
+  <data name="Actions" xml:space="preserve"><value>Camau gweithredu</value></data>
+  <data name="Reassign" xml:space="preserve"><value>Ailbennu</value></data>
+  <data name="ReassignmentReason" xml:space="preserve"><value>Rheswm dros ailbennu</value></data>
+  <data name="ViewHistory" xml:space="preserve"><value>Gweld hanes</value></data>
+  <data name="CloseFollowUp" xml:space="preserve"><value>Cau'r dilyniant</value></data>
+  <data name="ReviewOutcome" xml:space="preserve"><value>Canlyniad yr adolygiad</value></data>
+  <data name="ReviewNotes" xml:space="preserve"><value>Nodiadau'r adolygiad</value></data>
+  <data name="RecentEscalationHistory" xml:space="preserve"><value>Hanes uwchgyfeirio diweddar</value></data>
+  <data name="NoEscalationHistory" xml:space="preserve"><value>Nid oes uwchgyfeiriadau wedi'u cwblhau'n ddiweddar.</value></data>
+  <data name="EscalationAuditTrail" xml:space="preserve"><value>Llwybr archwilio'r uwchgyfeiriad</value></data>
+  <data name="ColumnTime" xml:space="preserve"><value>Amser</value></data>
+  <data name="ColumnEvent" xml:space="preserve"><value>Digwyddiad</value></data>
+  <data name="ColumnActorRole" xml:space="preserve"><value>Rôl yr unigolyn</value></data>
+  <data name="AcknowledgedLate" xml:space="preserve"><value>Cydnabuwyd yn hwyr</value></data>
+  <data name="Reassigned" xml:space="preserve"><value>Wedi'i ailbennu</value></data>
+  <data name="NoFurtherActionRequired" xml:space="preserve"><value>Nid oes angen camau pellach</value></data>
+  <data name="IncidentReported" xml:space="preserve"><value>Digwyddiad wedi'i adrodd</value></data>
+  <data name="Other" xml:space="preserve"><value>Arall</value></data>
+  <data name="Created" xml:space="preserve"><value>Wedi'i greu</value></data>
+  <data name="Acknowledged" xml:space="preserve"><value>Wedi'i gydnabod</value></data>
+  <data name="Resolved" xml:space="preserve"><value>Wedi'i ddatrys</value></data>
+  <data name="Escalated" xml:space="preserve"><value>Wedi'i uwchgyfeirio</value></data>
+  <data name="ManualFollowUp" xml:space="preserve"><value>Dilyniant â llaw</value></data>
+  <data name="Closed" xml:space="preserve"><value>Wedi'i gau</value></data>
+  <data name="EscalationCreated" xml:space="preserve"><value>Uwchgyfeiriad wedi'i greu</value></data>
+  <data name="EscalationAcknowledged" xml:space="preserve"><value>Uwchgyfeiriad wedi'i gydnabod</value></data>
+  <data name="EscalationResolved" xml:space="preserve"><value>Uwchgyfeiriad wedi'i ddatrys</value></data>
+  <data name="EscalationReassigned" xml:space="preserve"><value>Uwchgyfeiriad wedi'i ailbennu</value></data>
+  <data name="EscalationEscalatedFurther" xml:space="preserve"><value>Uwchgyfeiriad wedi'i godi i'r haen nesaf</value></data>
+  <data name="EscalationMarkedForManualFollowUp" xml:space="preserve"><value>Dilyniant â llaw wedi'i agor</value></data>
+  <data name="EscalationClosed" xml:space="preserve"><value>Uwchgyfeiriad wedi'i gau</value></data>
+  <data name="FollowUpExceptionRaised" xml:space="preserve"><value>Eithriad dilyniant wedi'i godi</value></data>
+  <data name="FollowUpExceptionClosed" xml:space="preserve"><value>Eithriad dilyniant wedi'i gau</value></data>
+  <data name="ClinicalSafety" xml:space="preserve"><value>Diogelwch clinigol</value></data>
+  <data name="CarerPresence" xml:space="preserve"><value>Presenoldeb gofalwr</value></data>
+  <data name="SafeguardingConcern" xml:space="preserve"><value>Pryder diogelu</value></data>
+  <data name="DeteriorationFlag" xml:space="preserve"><value>Baner dirywiad</value></data>
+  <data name="Yes" xml:space="preserve"><value>Oes</value></data>
+  <data name="No" xml:space="preserve"><value>Nac oes</value></data>
+  <data name="Present" xml:space="preserve"><value>Yn bresennol</value></data>
+  <data name="NotPresent" xml:space="preserve"><value>Ddim yn bresennol</value></data>
+  <data name="RecordCarerPresence" xml:space="preserve"><value>Cofnodi presenoldeb gofalwr</value></data>
+  <data name="CarerPresent" xml:space="preserve"><value>Mae gofalwr yn bresennol</value></data>
+  <data name="CarerName" xml:space="preserve"><value>Enw'r gofalwr</value></data>
+  <data name="CarerRelationship" xml:space="preserve"><value>Perthynas â'r claf</value></data>
+  <data name="SaveCarerPresence" xml:space="preserve"><value>Cadw presenoldeb y gofalwr</value></data>
+  <data name="RaiseSafeguardingConcern" xml:space="preserve"><value>Codi pryder diogelu</value></data>
+  <data name="ConcernReason" xml:space="preserve"><value>Beth a welwyd</value></data>
+  <data name="RaiseConcern" xml:space="preserve"><value>Codi pryder</value></data>
+  <data name="FlagDeterioration" xml:space="preserve"><value>Nodi dirywiad y claf</value></data>
+  <data name="DeteriorationReason" xml:space="preserve"><value>Pa ddirywiad a welwyd</value></data>
+  <data name="RaiseDeteriorationAlert" xml:space="preserve"><value>Codi rhybudd dirywiad</value></data>
+  <data name="CarerPresenceSaved" xml:space="preserve"><value>Cofnodwyd presenoldeb y gofalwr.</value></data>
+  <data name="SafeguardingRaised" xml:space="preserve"><value>Codwyd y pryder diogelu a'i bennu ar gyfer ymateb.</value></data>
+  <data name="DeteriorationRaised" xml:space="preserve"><value>Codwyd y rhybudd dirywiad a'i bennu ar gyfer ymateb.</value></data>
+  <data name="PatientFlowActions" xml:space="preserve"><value>Llif cleifion</value></data>
+  <data name="BeginTriage" xml:space="preserve"><value>Dechrau brysbennu</value></data>
+  <data name="CompleteTriage" xml:space="preserve"><value>Cwblhau brysbennu</value></data>
+  <data name="BeginTreatment" xml:space="preserve"><value>Dechrau triniaeth</value></data>
+  <data name="TreatmentLocation" xml:space="preserve"><value>Lleoliad triniaeth</value></data>
+  <data name="SelectLocation" xml:space="preserve"><value>Dewiswch leoliad</value></data>
+  <data name="LocationWithSpaces" xml:space="preserve"><value>{0} ({1} lle ar gael)</value></data>
+  <data name="DischargePatient" xml:space="preserve"><value>Rhyddhau'r claf</value></data>
+  <data name="DischargeNotes" xml:space="preserve"><value>Nodiadau rhyddhau</value></data>
+  <data name="ConfirmDischarge" xml:space="preserve"><value>Rwy'n cadarnhau bod {0} {1} yn barod i gael ei ryddhau</value></data>
+  <data name="TriageStarted" xml:space="preserve"><value>Dechreuwyd brysbennu.</value></data>
+  <data name="TriageCompleted" xml:space="preserve"><value>Cwblhawyd brysbennu.</value></data>
+  <data name="TreatmentStarted" xml:space="preserve"><value>Symudwyd y claf i driniaeth.</value></data>
+  <data name="PatientDischarged" xml:space="preserve"><value>Rhyddhawyd y claf.</value></data>
+  <data name="PainLocation" xml:space="preserve"><value>Lleoliad y boen</value></data>
+  <data name="PainCharacter" xml:space="preserve"><value>Natur y boen</value></data>
+  <data name="PainOnset" xml:space="preserve"><value>Dechrau'r boen</value></data>
+  <data name="AssignedClinicalStaff" xml:space="preserve"><value>Staff clinigol a neilltuwyd</value></data>
+  <data name="PaediatricTraining" xml:space="preserve"><value>Hyfforddiant pediatrig</value></data>
+  <data name="PaediatricStaffAssignment" xml:space="preserve"><value>Neilltuo staff pediatrig</value></data>
+  <data name="AssignSelfDescription" xml:space="preserve"><value>Neilltuo {0} fel y clinigydd cyfrifol, gan weithio fel {1}.</value></data>
+  <data name="PaediatricTrainedDeclaration" xml:space="preserve"><value>Mae gennyf hyfforddiant pediatrig wedi'i gofnodi ar gyfer y gwaith hwn</value></data>
+  <data name="AssignMyself" xml:space="preserve"><value>Neilltuo fy hun</value></data>
+  <data name="NotAssigned" xml:space="preserve"><value>Heb ei neilltuo</value></data>
+  <data name="TrainingRecorded" xml:space="preserve"><value>Hyfforddiant wedi'i gofnodi</value></data>
+  <data name="TrainingNotRecorded" xml:space="preserve"><value>Hyfforddiant heb ei gofnodi — hysbyswyd y nyrs â gofal</value></data>
+  <data name="StaffAssignmentSaved" xml:space="preserve"><value>Cofnodwyd y neilltuad staff clinigol.</value></data>
+  <data name="ObservationSource" xml:space="preserve"><value>Ffynhonnell yr arsylwad</value></data>
+  <data name="NursingAssessment" xml:space="preserve"><value>Asesiad nyrsio</value></data>
+  <data name="MedicalReview" xml:space="preserve"><value>Adolygiad meddygol</value></data>
+  <data name="TriageAssessment" xml:space="preserve"><value>Asesiad brysbennu</value></data>
+  <data name="ClinicalHandover" xml:space="preserve"><value>Trosglwyddiad clinigol</value></data>
+  <data name="OtherClinicalAssessment" xml:space="preserve"><value>Asesiad clinigol arall</value></data>
+  <data name="SbarAssessment" xml:space="preserve"><value>Asesiad SBAR</value></data>
+  <data name="SbarSituation" xml:space="preserve"><value>Sefyllfa</value></data>
+  <data name="SbarBackground" xml:space="preserve"><value>Cefndir</value></data>
+  <data name="SbarAssessmentSection" xml:space="preserve"><value>Asesiad</value></data>
+  <data name="SbarRecommendation" xml:space="preserve"><value>Argymhelliad</value></data>
+  <data name="Breathing" xml:space="preserve"><value>Canfyddiad anadlu</value></data>
+  <data name="Circulation" xml:space="preserve"><value>Canfyddiad cylchrediad</value></data>
+  <data name="Mobility" xml:space="preserve"><value>Canfyddiad symudedd</value></data>
+  <data name="AssessmentDetails" xml:space="preserve"><value>Manylion {0}</value></data>
+  <data name="NoConcern" xml:space="preserve"><value>Dim pryder wedi'i nodi</value></data>
+  <data name="UnableToAssess" xml:space="preserve"><value>Methu asesu</value></data>
+</root>

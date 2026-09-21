@@ -1,0 +1,24 @@
+@using Betsi.Application.Escalations
+@inject IStringLocalizer<Strings> T
+
+<div class="policy-card">
+    <h3>@T["PolicyRevision", Revision.Revision] <span class="status-label">@T[Revision.State]</span></h3>
+    @if (Revision.InForce) { <strong>@T["CurrentlyInForce"]</strong> }
+    @if (Revision.RestoresRevision is { } restored) { <p>@T["RestoresRevision", restored]</p> }
+    <p>@T["ProposedBy", Revision.ProposedByRole, Revision.ProposedAt.ToLocalTime().ToString("g")]</p>
+    <p><strong>@T["ProposalReason"]:</strong> @Revision.ProposalReason</p>
+    <p><strong>@T["FollowUpOwner"]:</strong> @Revision.FollowUpOwnerRole</p>
+    @if (!Revision.Enabled) { <p class="notice notice--warning">@T["PolicyDisabled"]</p> }
+    else
+    {
+        <table class="board"><thead><tr><th>@T["ColumnTier"]</th><th>@T["ThresholdMinutes"]</th><th>@T["ResponsibleRole"]</th><th>@T["AcknowledgementDeadline"]</th><th>@T["RecommendedAction"]</th></tr></thead>
+        <tbody>@foreach (var tier in Revision.Tiers) { <tr><td>@tier.Level</td><td>@tier.ThresholdMinutes</td><td>@tier.ResponsibleRole</td><td>@tier.AcknowledgementDeadlineMinutes</td><td>@tier.RecommendedAction</td></tr> }</tbody></table>
+    }
+    @if (Revision.DecidedAt is not null)
+    {
+        <p>@T["DecidedBy", Revision.DecidedByRole ?? T["NotRecorded"].Value, Revision.DecidedAt.Value.ToLocalTime().ToString("g")]</p>
+        <p><strong>@T["DecisionReason"]:</strong> @Revision.DecisionReason</p>
+    }
+</div>
+
+@code { [Parameter, EditorRequired] public PolicyRevisionView Revision { get; set; } = default!; }

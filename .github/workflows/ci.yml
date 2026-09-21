@@ -46,8 +46,9 @@ jobs:
         # The SQL Server suite uses Testcontainers; the GitHub runner has a Docker daemon,
         # so it runs here even though it skips on a workstation without one.
         run: >
-          dotnet test Betsi.slnx --configuration Release --no-build --
-          --coverage --coverage-output-format cobertura --coverage-output full.cobertura.xml
+          dotnet test Betsi.slnx --configuration Release --no-build
+          --coverage --coverage-output-format cobertura
+          --coverage-output "${{ github.workspace }}/TestResults/full.cobertura.xml"
 
       - name: Coverage gate (Domain and Application ≥70%)
         # Phase C's exit criterion. The gate covers the two layers that hold the clinical
@@ -62,6 +63,46 @@ jobs:
           name: coverage
           path: TestResults/full.cobertura.xml
           if-no-files-found: warn
+
+  browser:
+    name: Browser boards and accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify bundled SignalR client matches the lockfile
+        run: |
+          npm run vendor:signalr
+          git diff --exit-code -- Betsi/wwwroot/lib/signalr
+      - name: Start development identity provider and SQL Server
+        run: docker compose up -d --wait --wait-timeout 180 sqlserver keycloak
+      - run: dotnet build Betsi.slnx
+      - name: Test actual browser login, boards, recovery and axe
+        run: npm run test:ui
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence
+          path: |
+            TestResults/browser
+            TestResults/browser-report
+          if-no-files-found: warn
+      - name: Dependency logs
+        if: failure()
+        run: docker compose logs --tail 100 sqlserver keycloak
+      - name: Stop dependencies
+        if: always()
+        run: docker compose down
 
   schema-drift:
     name: Migrations match the model

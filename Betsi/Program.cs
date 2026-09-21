@@ -10,6 +10,7 @@ using Betsi.ControlPlane;
 using Betsi.Infrastructure.Persistence;
 using Betsi.Infrastructure.Tenancy;
 using Betsi.Security;
+using Betsi.UI;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -122,6 +123,7 @@ try
 
     builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
     builder.Services.AddBetsiObservability(builder.Configuration);
+    builder.Services.AddBetsiUi(builder.Configuration);
     builder.Services.AddEscalationEngine(builder.Configuration, builder.Environment);
 
     builder.Services.AddMediatR(cfg =>
@@ -141,6 +143,8 @@ try
         // inspected for a tenant that may not use it.
         cfg.AddOpenBehavior(typeof(LicenseBehaviour<,>));
         cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+        // Innermost: the boards are told only about commands that actually happened.
+        cfg.AddOpenBehavior(typeof(BoardNotificationBehaviour<,>));
     });
 
     builder.Services.AddValidatorsFromAssemblyContaining<RegisterPatientCommandValidator>();
@@ -209,7 +213,13 @@ try
     app.UseAuthentication();
     app.UseTenantResolution(tenantResolution);
     app.UseAuthorization();
+
+    // Razor Components require it, and the sign-out and language forms depend on it. After
+    // authorisation, so the token is validated for a request that has an identity.
+    app.UseAntiforgery();
+
     app.MapControllers();
+    app.MapBetsiUi();
     // Three probes, because an orchestrator asks three different questions. /health/live says
     // the process is up and must not depend on a database, or a database outage would have
     // every instance killed and restarted into the same outage. /health/ready says this

@@ -22,6 +22,147 @@ namespace Betsi.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Betsi.Domain.Aggregates.ClinicalObservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AgeBand")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BreathingDetails")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("BreathingFinding")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CirculationDetails")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("CirculationFinding")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Consciousness")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EarlyWarningScore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("HighestSingleParameter")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MobilityDetails")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("MobilityFinding")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool>("OnSupplementalOxygen")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("OxygenSaturation")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PainCharacter")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PainLocation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("PainOnsetAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("PainScale")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PainScore")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PatientEpisodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Pulse")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RecordedByRole")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("RespiratoryRate")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SbarAssessment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("SbarBackground")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("SbarRecommendation")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("SbarSituation")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("ScoreUnavailable")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SupersededByObservationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SupersedesObservationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("SystolicBloodPressure")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Temperature")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SupersedesObservationId")
+                        .IsUnique()
+                        .HasFilter("[SupersedesObservationId] IS NOT NULL");
+
+                    b.HasIndex("PatientEpisodeId", "RecordedAt", "Id");
+
+                    b.ToTable("ClinicalObservations", "dbo");
+                });
+
             modelBuilder.Entity("Betsi.Domain.Aggregates.Escalation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -321,7 +462,39 @@ namespace Betsi.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("ArrivedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("AssignedStaffActorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AssignedStaffName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool?>("AssignedStaffPaediatricTrained")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AssignedStaffRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CarerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CarerPresenceRecordedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("CarerPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("CarerRelationship")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("DeteriorationFlagged")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("DeteriorationFlaggedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("EndedAt")
@@ -344,8 +517,17 @@ namespace Betsi.Infrastructure.Persistence.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<bool>("PaediatricSkillGapAlertOpen")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("QueuePosition")
                         .HasColumnType("int");
+
+                    b.Property<bool>("SafeguardingConcernRaised")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("StaffAssignedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("State")
                         .HasColumnType("int");
@@ -903,6 +1085,20 @@ namespace Betsi.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "Active");
 
                     b.ToTable("WebhookSubscriptions", "dbo");
+                });
+
+            modelBuilder.Entity("Betsi.Domain.Aggregates.ClinicalObservation", b =>
+                {
+                    b.HasOne("Betsi.Domain.Aggregates.PatientEpisode", null)
+                        .WithMany()
+                        .HasForeignKey("PatientEpisodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Betsi.Domain.Aggregates.ClinicalObservation", null)
+                        .WithMany()
+                        .HasForeignKey("SupersedesObservationId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

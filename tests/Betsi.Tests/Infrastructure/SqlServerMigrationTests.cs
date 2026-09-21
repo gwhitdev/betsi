@@ -60,6 +60,78 @@ public sealed class SqlServerMigrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Competing_observation_corrections_commit_one_chain_with_matching_events()
+    {
+        Assert.SkipWhen(_skipReason is not null, _skipReason ?? string.Empty);
+        var ct = Ct;
+        var tenant = TenantContextFor();
+        var now = DateTime.UtcNow;
+        var episode = PatientEpisode.CreateNew(_tenantId, "Synthetic", "Observation",
+            new DateTime(1980, 1, 1), null, _actorId, "Nurse");
+        ClinicalObservation Observation(Guid? supersedes = null) => ClinicalObservation.Record(
+            _tenantId, episode.Id, Betsi.Domain.Clinical.AgeBand.Adult,
+            ClinicalObservation.ObservationKind.Routine, default, null, null, "Synthetic",
+            now, _actorId, "Nurse", supersedes,
+            source: ClinicalObservation.ObservationSource.NursingAssessment,
+            sbarSituation: "Structured SQL Server round trip",
+            breathingFinding: ClinicalObservation.AssessmentFinding.Concern,
+            breathingDetails: "Synthetic finding",
+            circulationFinding: ClinicalObservation.AssessmentFinding.NoConcern,
+            mobilityFinding: ClinicalObservation.AssessmentFinding.UnableToAssess);
+        var original = Observation();
+        await using (var setup = NewContext())
+        {
+            await setup.Database.MigrateAsync(ct);
+            var unit = new UnitOfWork(setup, tenant);
+            unit.Add(episode);
+            unit.Add(original);
+            await unit.CommitAsync([episode, original], ct);
+        }
+
+        await using var firstContext = NewContext();
+        await using var secondContext = NewContext();
+        // Both callers read version 1 before either commits: deterministic lost-update race.
+        var firstOriginal = await firstContext.ClinicalObservations.SingleAsync(o => o.Id == original.Id, ct);
+        var secondOriginal = await secondContext.ClinicalObservations.SingleAsync(o => o.Id == original.Id, ct);
+        var winner = Observation(original.Id);
+        var loser = Observation(original.Id);
+        firstOriginal.SupersededBy(winner.Id, now, _actorId, "Nurse");
+        secondOriginal.SupersededBy(loser.Id, now, _actorId, "Nurse");
+        var firstUnit = new UnitOfWork(firstContext, tenant);
+        var secondUnit = new UnitOfWork(secondContext, tenant);
+        firstUnit.Add(winner);
+        secondUnit.Add(loser);
+        await firstUnit.CommitAsync([winner, firstOriginal], ct);
+        var failure = await Should.ThrowAsync<DbUpdateException>(() => secondUnit.CommitAsync([loser, secondOriginal], ct));
+        Betsi.API.Problems.ProblemDetailsExceptionHandler.Map(failure, isDevelopment: false).Status.ShouldBe(409);
+
+        await using var read = NewContext();
+        var history = await read.ClinicalObservations.Where(o => o.PatientEpisodeId == episode.Id).ToListAsync(ct);
+        history.Count.ShouldBe(2);
+        history.Single(o => o.Id == original.Id).SupersededByObservationId.ShouldBe(winner.Id);
+        history.Single(o => o.Id == original.Id).Version.ShouldBe(2);
+        history.Single(o => o.Id == winner.Id).SupersedesObservationId.ShouldBe(original.Id);
+        history.ShouldAllBe(o => o.Source == ClinicalObservation.ObservationSource.NursingAssessment);
+        history.ShouldAllBe(o => o.SbarSituation == "Structured SQL Server round trip");
+        history.ShouldAllBe(o => o.BreathingFinding == ClinicalObservation.AssessmentFinding.Concern);
+        history.ShouldAllBe(o => o.BreathingDetails == "Synthetic finding");
+        history.ShouldAllBe(o => o.CirculationFinding == ClinicalObservation.AssessmentFinding.NoConcern);
+        history.ShouldAllBe(o => o.MobilityFinding == ClinicalObservation.AssessmentFinding.UnableToAssess);
+        (await read.DomainEvents.CountAsync(e => e.AggregateId == original.Id || e.AggregateId == winner.Id, ct)).ShouldBe(3);
+        (await read.OutboxMessages.CountAsync(e => e.AggregateId == original.Id || e.AggregateId == winner.Id, ct)).ShouldBe(3);
+        (await read.DomainEvents.AnyAsync(e => e.AggregateId == loser.Id, ct)).ShouldBeFalse();
+        (await read.OutboxMessages.AnyAsync(e => e.AggregateId == loser.Id, ct)).ShouldBeFalse();
+
+        // Measurements cannot be edited or deleted through normal persistence.
+        var stored = history.Single(o => o.Id == winner.Id);
+        read.Entry(stored).Property(o => o.Notes).CurrentValue = "Overwritten";
+        await Should.ThrowAsync<InvalidOperationException>(() => read.SaveChangesAsync(ct));
+        read.ChangeTracker.Clear();
+        read.ClinicalObservations.Remove(stored);
+        await Should.ThrowAsync<InvalidOperationException>(() => read.SaveChangesAsync(ct));
+    }
+
+    [Fact]
     public async Task The_migrations_apply_cleanly_to_a_real_sql_server()
     {
         Assert.SkipWhen(_skipReason is not null, _skipReason ?? string.Empty);
@@ -255,7 +327,8 @@ public sealed class SqlServerMigrationTests : IAsyncLifetime
         do
         {
             await using var context = NewContext();
-            var page = await new Betsi.Application.Queries.EpisodeQueries(context, TimeProvider.System)
+            var page = await new Betsi.Application.Queries.EpisodeQueries(context, TimeProvider.System,
+                new Betsi.Application.Commands.Handlers.ClinicalOptions())
                 .GetWaitingBoardAsync(new Betsi.Application.Queries.WaitingBoardFilter(Cursor: cursor, PageSize: 5), Ct);
             seen.AddRange(page.Items.Select(i => i.EpisodeId));
             cursor = page.NextCursor;

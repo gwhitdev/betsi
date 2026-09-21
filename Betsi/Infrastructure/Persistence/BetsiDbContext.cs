@@ -24,6 +24,7 @@ public class BetsiDbContext : DbContext
 
     // ============= Aggregates =============
     public DbSet<PatientEpisode> PatientEpisodes { get; set; } = null!;
+    public DbSet<ClinicalObservation> ClinicalObservations { get; set; } = null!;
     public DbSet<Location> Locations { get; set; } = null!;
     public DbSet<Queue> Queues { get; set; } = null!;
     public DbSet<Escalation> Escalations { get; set; } = null!;
@@ -71,6 +72,7 @@ public class BetsiDbContext : DbContext
 
         // Configure aggregate mappings
         ConfigurePatientEpisode(modelBuilder);
+        ConfigureClinicalObservation(modelBuilder);
         ConfigureLocation(modelBuilder);
         ConfigureQueue(modelBuilder);
         ConfigureEscalation(modelBuilder);
@@ -116,6 +118,8 @@ public class BetsiDbContext : DbContext
         builder.Property(e => e.TriageStartedAt);
         builder.Property(e => e.TreatmentStartedAt);
         builder.Property(e => e.EndedAt);
+        builder.Property(e => e.AssignedStaffName).HasMaxLength(200);
+        builder.Property(e => e.AssignedStaffRole).HasMaxLength(100);
 
         var nhsNumberIndex = builder.HasIndex(e => new { e.TenantId, e.NhsNumber }).IsUnique();
         if (IsSqlServer)
@@ -125,6 +129,34 @@ public class BetsiDbContext : DbContext
         builder.HasIndex(e => new { e.TenantId, e.LocationId });
 
         builder.ToTable("PatientEpisodes", "dbo");
+    }
+
+    private void ConfigureClinicalObservation(ModelBuilder modelBuilder)
+    {
+        var builder = modelBuilder.Entity<ClinicalObservation>();
+        builder.HasKey(o => o.Id);
+        builder.Property(o => o.Id).ValueGeneratedNever();
+        builder.Property(o => o.Version).IsConcurrencyToken();
+        builder.Property(o => o.Temperature).HasPrecision(4, 1);
+        builder.Property(o => o.Notes).HasMaxLength(4000);
+        builder.Property(o => o.PainLocation).HasMaxLength(200);
+        builder.Property(o => o.PainCharacter).HasMaxLength(200);
+        builder.Property(o => o.SbarSituation).HasMaxLength(2000);
+        builder.Property(o => o.SbarBackground).HasMaxLength(2000);
+        builder.Property(o => o.SbarAssessment).HasMaxLength(2000);
+        builder.Property(o => o.SbarRecommendation).HasMaxLength(2000);
+        builder.Property(o => o.BreathingDetails).HasMaxLength(1000);
+        builder.Property(o => o.CirculationDetails).HasMaxLength(1000);
+        builder.Property(o => o.MobilityDetails).HasMaxLength(1000);
+        builder.Property(o => o.RecordedByRole).HasMaxLength(100).IsRequired();
+        builder.HasOne<PatientEpisode>().WithMany().HasForeignKey(o => o.PatientEpisodeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ClinicalObservation>().WithMany().HasForeignKey(o => o.SupersedesObservationId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(o => new { o.PatientEpisodeId, o.RecordedAt, o.Id });
+        builder.HasIndex(o => o.SupersedesObservationId).IsUnique()
+            .HasFilter(IsSqlServer ? "[SupersedesObservationId] IS NOT NULL" : "\"SupersedesObservationId\" IS NOT NULL");
+        builder.ToTable("ClinicalObservations", "dbo");
     }
 
     private void ConfigureLocation(ModelBuilder modelBuilder)
@@ -514,6 +546,15 @@ public class BetsiDbContext : DbContext
                     $"{entry.Metadata.ClrType.Name} rows are append-only and cannot be {entry.State.ToString().ToLowerInvariant()}.");
             }
 
+            if (entry.Entity is ClinicalObservation)
+            {
+                if (entry.State == EntityState.Deleted ||
+                    (entry.State == EntityState.Modified && entry.Properties.Any(p => p.IsModified &&
+                        p.Metadata.Name is not nameof(ClinicalObservation.SupersededByObservationId)
+                            and not nameof(ClinicalObservation.Version))))
+                    throw new InvalidOperationException("Observation measurements are append-only; record a correction instead.");
+            }
+
             if (entry.Metadata.FindProperty(nameof(AggregateRoot.TenantId)) is null)
                 continue;
 
@@ -548,4 +589,3 @@ public sealed class TenantIsolationViolationException : Exception
     {
     }
 }
-

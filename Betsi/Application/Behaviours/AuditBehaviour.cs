@@ -61,6 +61,9 @@ public sealed class AuditBehaviour<TRequest, TResponse> : IPipelineBehavior<TReq
         }
         catch (Exception exception)
         {
+            // A failed multi-aggregate commit can leave tracked changes behind. Never flush
+            // those changes when saving the separate failure audit record.
+            _context.ChangeTracker.Clear();
             await WriteAuditAsync(
                 request,
                 outcome: "Failure",
@@ -110,6 +113,7 @@ public sealed class AuditBehaviour<TRequest, TResponse> : IPipelineBehavior<TReq
     private static string AggregateTypeFor(string commandName) => commandName switch
     {
         // Most specific first: "RaisePolicyEscalation" and "EscalationPolicy" both mention an escalation.
+        var n when n.Contains("Observation", StringComparison.Ordinal) => "ClinicalObservation",
         var n when n.Contains("EscalationPolicy", StringComparison.Ordinal) => "EscalationPolicy",
         var n when n.Contains("FollowUpException", StringComparison.Ordinal) => "FollowUpException",
         var n when n.Contains("Escalation", StringComparison.Ordinal) => "Escalation",

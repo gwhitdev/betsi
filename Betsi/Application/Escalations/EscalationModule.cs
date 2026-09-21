@@ -19,6 +19,8 @@ public static class EscalationModule
         services.AddScoped<IWaitingTimeMonitor, WaitingTimeMonitor>();
         services.AddScoped<EscalationQueries>();
         services.AddScoped<Betsi.Application.Queries.EpisodeQueries>();
+        services.AddScoped<Betsi.Application.Queries.ObservationQueries>();
+        services.AddScoped<Betsi.Application.Queries.LocationQueries>();
         services.AddScoped<Betsi.Application.Commands.CommandEnvelopeDispatcher>();
         services.AddHostedService<WaitingTimeMonitorService>();
 

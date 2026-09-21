@@ -36,6 +36,35 @@ services:
       retries: 10
       start_period: 30s
 
+  keycloak:
+    # The development identity provider (open decision 4). A real OIDC provider rather than the
+    # X-Betsi-* headers, so the authentication path a pilot site would use is the one exercised
+    # here — including multi-role accounts and acting-role selection, which headers cannot model.
+    #
+    # The realm fixture seeds a new development identity store. Mount the existing data directory
+    # (owned by Keycloak's UID 1000), not its initially absent h2 child: Docker otherwise creates
+    # a root-owned volume directory that Keycloak cannot write to.
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: betsi-keycloak
+    command: ["start-dev", "--import-realm", "--http-port=8081"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./tools/keycloak/betsi-realm.json:/opt/keycloak/data/import/betsi-realm.json:ro
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      # The image has no curl or wget; Keycloak ships a JVM, and its management port answers
+      # /health/ready once the realm import has finished.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   betsi:
     profiles: [app]
     image: ${BETSI_IMAGE:-betsi:local}
@@ -44,6 +73,8 @@ services:
     container_name: betsi
     depends_on:
       sqlserver:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -55,6 +86,16 @@ services:
       Tenancy__DatabaseServers__default: secret:database-server
       ControlPlane__MigrateOnStartup: "true"
       Observability__DeploymentEnvironment: local
+      UI__Enabled: "true"
+      Authentication__Interactive__Authority: http://keycloak:8081/realms/betsi
+      Authentication__Interactive__ClientId: betsi-ui
+      Authentication__Interactive__ClientSecret: betsi-ui-development-secret
+      Authentication__Interactive__RequireHttpsMetadata: "false"
+    volumes:
+      # The development licences, mounted rather than baked in: a published image has no reason
+      # to carry licence keys, and these are only meaningful in Development, where the service
+      # seeds the two demonstration tenants from them.
+      - ./Betsi/DevLicenses:/app/DevLicenses:ro
     secrets:
       - control-plane
       - database-server
@@ -64,6 +105,55 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+  otel-collector:
+    # The observability stack (MVP-109/110), behind a profile because most development sessions
+    # do not need it and it is three more containers to start.
+    #
+    #   docker compose --profile observability up -d
+    #   then point the service at it: Observability__OtlpEndpoint=http://localhost:4317
+    profiles: [observability]
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    container_name: betsi-otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./tools/observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC, which the service exports to
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # what Prometheus scrapes
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.1.0
+    container_name: betsi-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=24h
+    volumes:
+      - ./tools/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana-oss:11.3.1
+    container_name: betsi-grafana
+    environment:
+      # Anonymous access, on a container bound to your own machine. A deployment puts Grafana
+      # behind the same identity provider as everything else.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - ./tools/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      # 3001, not 3000: 3000 is the first port every other development tool takes, and a
+      # dashboard that silently shows someone else's application is worse than one that is down.
+      - "3001:3000"
+    depends_on:
+      - prometheus
 
 secrets:
   # Files, not values: this is how Docker, Kubernetes and Azure Container Apps all present a
@@ -77,3 +167,4 @@ secrets:
 volumes:
   betsi-sqlserver-data:
   betsi-backups:
+  keycloak-data:

@@ -1,0 +1,39 @@
+# Receives OpenTelemetry from Betsi and exposes it for Prometheus to scrape.
+#
+# The service exports over OTLP and knows nothing about what is on the other end; swapping this
+# for a vendor's collector is a configuration change in the deployment, not in the application.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+
+exporters:
+  # Prometheus scrapes this. Metric names keep their dots translated to underscores, which is
+  # why the dashboard queries read betsi_commands rather than betsi.commands.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      # No trace backend locally: traces are accepted and counted so the export path is
+      # exercised, without running a Tempo or Jaeger nobody is reading.
+      exporters: [debug]

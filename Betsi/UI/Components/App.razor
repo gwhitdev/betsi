@@ -1,0 +1,29 @@
+@* The document itself. Rendered on the server for every page. *@
+@inject IStringLocalizer<Strings> T
+<!DOCTYPE html>
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
+<head>
+    <meta charset="utf-8" />
+    @* Zoom is deliberately not disabled: a clinician needing to magnify a waiting time is the
+       reason WCAG 2.2 requires it. *@
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="app.css" />
+    <title>Betsi</title>
+    <HeadOutlet />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+
+    @* Rendered without JavaScript, so a circuit that cannot reconnect says so in words rather
+       than leaving a board silently frozen on hour-old waiting times. *@
+    <div id="reconnect-banner" role="alert" aria-live="assertive" style="display:none">
+        <p>@T["ConnectionLost"]</p>
+        <button type="button" class="button button--quiet" onclick="location.reload()">@T["Reload"]</button>
+    </div>
+
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="lib/signalr/signalr.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

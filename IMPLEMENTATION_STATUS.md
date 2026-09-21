@@ -1,6 +1,6 @@
 # Betsi Patient Flow — Implementation Status
 
-**Last updated**: 2026-09-17
+**Last updated**: 2026-09-21
 **Plan**: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 **Definition of done**: merged with tests passing in CI. "It compiles" is not a status.
 
@@ -14,6 +14,12 @@ integration)** and **I (deployment & operations)** are implemented, and **all of
 `main`** as of 2026-09-17: [PR #1](https://github.com/gwhitdev/betsi/pull/1) (A–E),
 [PR #2](https://github.com/gwhitdev/betsi/pull/2) (G) and
 [PR #3](https://github.com/gwhitdev/betsi/pull/3) (I), each merged with CI green.
+
+Phase H's two headline boards are implemented. Subsequent local commits `7a6242a` and
+`4b26a78` add operational follow-through, migration rollback tests and query-load tests.
+Phase F and the expanded Phase H/N3 screens have fresh local build, .NET and browser evidence,
+but their clinical and pilot acceptance remain unfinished. Local verification is not merged
+delivery or clinical approval; see [N4 scope](docs/N4-SCOPE.md) for the precise gaps.
 
 Phase C is closed: Phase I added the coverage gate, and `main` is now protected by its three
 required status checks. Protection is status checks only, without a required review — a
@@ -129,6 +135,21 @@ read from the tenant database lacked a UTC marker, which a browser would show an
   hazard log, as is the default follow-up owner (Operations Manager) for escalations raised
   without a policy.
 
+## Phase F — Clinical safety features (MVP-030–045)
+
+| Item | State on 2026-09-18 |
+|---|---|
+| Clinical commands, handlers, observation aggregate and clinical scoring code | Observation path, source/SBAR/assessment templates and the implemented alert workflows have domain/API/SQL Server verification; risk flags remain N4 work |
+| Episode and permission changes | Observation role boundaries verified; remaining clinical workflows not accepted |
+| Observation persistence, migrations, API integration and dedicated tests | Implemented locally; requirement-to-test mapping in [N1 verification](docs/N1-VERIFICATION.md), with the structured-template migration, 504/504 .NET result and real-browser workflow in [N4 scope](docs/N4-SCOPE.md) |
+| Hazard log | Provisional, untracked document; no clinical sign-off |
+| Remaining clinical criteria | Inventory against MVP-030–045 in N4; risk-flag lifecycle and timeline filters/highlighting remain, while paediatric ranges await an approved clinical reference |
+
+Development may continue using synthetic data with provisional assumptions recorded in
+[`docs/HAZARD-LOG.md`](docs/HAZARD-LOG.md). Real-patient use remains gated on clinical safety
+review and the safety case described there. N1 verification covers the observation slice only;
+N2 engineering verification is recorded separately, with dependent observation UI in N3.
+
 ## Phase G — API, authentication, integration (MVP-060–070)
 
 | Item | Status | Notes |
@@ -154,7 +175,7 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 | Penetration test of authentication | Not started — needs an external tester, alongside the cross-tenant test from Phase D |
 | Break-glass access, service-account scopes for addons (spec §6) | Not built |
 | Data Protection key ring | Delivered in Phase I: shared through the control-plane database, with optional certificate encryption at rest |
-| p95/p99 latency budgets (MVP-062) | Board paging is index-backed; not load-tested |
+| p95/p99 latency budgets (MVP-062) | Query-level SQL Server load measured on 2026-09-17: p95 18ms, p99 45ms. HTTP/API and deployed-system budgets remain unverified |
 
 **Needs a decision**
 
@@ -164,6 +185,35 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 - **Identity provider** for the pilot site (CIS2, Entra ID or other) and how the tenant claim is issued.
 
 ---
+
+## Phase H — Waiting board and escalation dashboard (MVP-080, 081, 083)
+
+| Item | Status | Notes |
+|---|---|---|
+| H-1 Blazor Server host and authentication | ✅ | The interface is served by the existing host, not a second application: one deployment, one image, one set of secrets. Cookie plus authorization-code sign-in; the tokens stay on the server, so an injected script cannot read one. `UI:Enabled` is off by default — an instance that only receives HL7 messages has no reason to expose a sign-in page |
+| Keycloak as the development provider | ✅ | `docker compose up -d keycloak`, realm in `tools/keycloak/betsi-realm.json`. Seven fixture accounts covering what headers cannot model: a second tenant, a site administrator, and accounts holding two roles with and without a selection |
+| H-2 Live updates | ✅ | SignalR, in the command pipeline rather than off the outbox, so an escalation reaches a screen in the second it is raised rather than at the next drain. A signal, not a payload: each board refetches what it is entitled to see, so there is one authorisation path. Groups are per tenant, joined from the connection's own verified claim |
+| H-3 Escalation dashboard | ✅ | Awaiting acknowledgement, active, and missed deadlines, with acknowledge and resolve from the screen. The no-policy banner is unmissable: a board that raises nothing automatically is indistinguishable from a quiet department |
+| H-4 Waiting room board | ✅ | Who is waiting, how long, and against which tier, updating live |
+| H-5 Accessibility and Welsh | 🔄 | Browser/axe checks and resource-key parity implemented; [N2 evidence](docs/N2-VERIFICATION.md) records fixes and covered states. Human Welsh terminology, screen-reader and physical-device checks are explicitly deferred; role/department labels can still be English |
+| H-6 Episode detail and policy editor | ⏳ | Not built. Both have working APIs; they were the declared first thing to cut |
+| Verified live | ✅ | 2026-09-17 against Keycloak and Docker SQL Server: a nurse signs in through the real OIDC flow and sees her own department's board; the other tenant's nurse sees none of those patients; a site administrator is refused both boards in words; an account with two roles and no selection is refused; the hub refuses an unauthenticated subscriber; the board renders in Welsh |
+
+**Found while building it, and fixed**
+
+- **A Blazor page does not run the API's authorisation pipeline.** A circuit has no HTTP request,
+  so `RequirePermission` applies the same role matrix in the component tree. Without it a Site
+  Administrator could have reached the waiting board and read patient names — the one role the
+  matrix exists to keep away from them.
+- The session now resolves during prerender as well as in the circuit, so the first HTML a
+  browser receives is the real board rather than an error.
+
+**Needs a decision**
+
+- **Whether a ward display may run unattended.** The interface signs a person in for a fixed
+  twelve hours with no sliding renewal, which suits a clinician at a workstation and not a board
+  on a wall. A waiting-room display showing no patient-identifying data is a different threat
+  model and needs its own decision before one is mounted.
 
 ## Phase I — Deployment & operations (MVP-105, 108, 109, 110, 113, 114)
 
@@ -188,11 +238,12 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 |---|---|
 | MVP-102 BDD/Gherkin, MVP-103 Pact contract tests | Not built, both P1. The integration and webhook suites already assert the same behaviour end to end; a second framework would restate it |
 | MVP-106/107 as running environments | The pipeline exists and is skipped until `DEPLOY_ENABLED` is set on each GitHub environment. There are no hosts |
-| Backup encryption, key-ring encryption | Supported and off. Both need a certificate the deployment must create; the service warns about the key ring on every start |
-| Monthly restore drill | Defined in the runbook; never run against a deployed environment. The automated test proves the mechanism, not the recovery time |
-| MVP-111 load testing, MVP-112 penetration test | Not started. The p95/p99 budgets are stated and unmeasured; the penetration test needs an external tester |
-| MVP-115 training materials | Not started. Needs the UI (Phase H) to describe |
-| Branch protection on `main` | A repository setting; cannot be delivered by a pull request |
+| Backup encryption, key-ring encryption | Development certificate tooling delivered in `7a6242a`; encrypted backup exercised locally. Deployment certificates and key custody remain site work |
+| Monthly restore drill | Development drill recorded 2026-09-17: 10 seconds, seven episodes, counts reconciled. Realistic-volume and deployed-environment recovery remain unverified |
+| MVP-104 migration rollback, MVP-111 load testing | Tests delivered in `4b26a78`: rollback/reapply for both contexts and SQL Server waiting-board query load. Deployed HTTP/UI load remains open |
+| MVP-112 penetration test | Not started; needs an independent tester |
+| MVP-115 training materials | Not started; drafts can now cover the delivered boards and grow with N3 |
+| Branch protection on `main` | Recorded enabled 2026-09-17; not rechecked in this review |
 
 **Needs a decision**
 
@@ -202,34 +253,56 @@ read from the tenant database lacked a UTC marker, which a browser would show an
 
 ## What to do next
 
-Agreed 2026-09-17; the full reasoning is in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §4.
-Everything below is verifiable on one developer's machine, which is where this system lives.
+Updated 2026-09-21. The detailed scope, dependencies and acceptance criteria are in
+[`IMPLEMENTATION_PLAN.md` §4](IMPLEMENTATION_PLAN.md#4-implementation-plan-for-the-next-steps).
 
-1. ~~Merge the stack~~ — done 2026-09-17. PRs #1, #2 and #3 are merged; `main` holds all seven
-   delivered phases.
-2. ~~Branch protection on `main`~~ — done 2026-09-17. Three required status checks, strict, no
-   required review.
-3. **Phase H** — Blazor Server, SignalR from the first screen, escalation dashboard then waiting
-   room board, WCAG 2.2 AA and Welsh throughout, with Keycloak in compose so authentication is
-   exercised by a person rather than only by tests.
-4. **Make the Phase I claims true locally**: run containerised through the `app` profile,
-   generate self-signed certificates so the backup and key-ring warnings go away, stand up an
-   OTLP collector and Grafana with the four documented panels, and run the restore drill for
-   real, recording the time against the 30-minute objective.
-5. **The loose testing ends**: MVP-104 migration rollback tests, and a load test against the
-   p95/p99 budgets, which are asserted and unmeasured.
-6. **Phase F**, against a hazard log kept provisionally (open decision 3).
+| Workstream | Work | Completion evidence |
+|---|---|---|
+| N0 | Reconcile planning records | Completed in this documentation update; historical verification dates retained |
+| N1 | Observation recording and verification follow-through | [Evidence](docs/N1-VERIFICATION.md): domain/API/SQL Server tests, atomic corrections, reference scoring, retries, failure/concurrency and coverage checks |
+| N2 | Board automation and fixes implemented locally; human reviews deferred | [Browser evidence](docs/N2-VERIFICATION.md), CI job and draft accessibility statement; remote CI and human Welsh/screen-reader/device acceptance remain open |
+| N3 | Episode detail, policy editor and escalation workflows; pair clinical screens with prerequisite N4 slices | Tested authorised workflows in both languages, accessibility coverage and training drafts |
+| N4 | Remaining clinical safety slices against MVP-030–045, alongside N3 after N1 | Criterion-to-test mapping, actual hazard controls and explicit unresolved clinical decisions |
+| N5 | Start site/reviewer preparation now; final pilot acceptance after N1–N4 | Representative recovery/load evidence, site operations, security testing and clinical/governance sign-off |
 
-Deliberately not scheduled: staging and production hosts, a paging tool, a penetration test and
-training materials. Each needs infrastructure, a third party, or a UI that does not exist yet.
-The CD pipeline stays written and skipped until there is somewhere to deploy to.
+N2's automated scope is documented in [N2 verification](docs/N2-VERIFICATION.md). The latest
+local run on 2026-09-21 passed **38 browser tests** and **504/504 .NET tests**, without skips.
+Domain coverage was **95.8%** and Application **86.6%**. CI is configured; remote execution
+for this tranche is not yet evidenced. The user
+deferred Welsh terminology and manual screen-reader/device reviews on 2026-09-18; these are
+not completion claims. N3 now has local patient registration, episode detail, observation
+entry/correction/history, policy workflow, escalation reassignment/history, clinical-safety
+actions, and manual triage/treatment/discharge. Administrator user management, training,
+print/export, inline help and site theming remain open. Persistent Keycloak development storage
+and role/tenant selectors are configured.
+
+N1's earlier verification and limitations are recorded in
+[N1 verification](docs/N1-VERIFICATION.md): **489/489 tests, no skips**, Domain **93.2%** and
+Application **83.3%** coverage, and both migration-drift checks clean. The earlier 422-test run predates additional tests
+and must not be cited as final-workspace evidence. N3/N4 are scheduled per workflow, not as
+whole sequential phases. Observation corrections, clinical flags, carer alerts and treatment
+location occupancy use `IUnitOfWork`; injected database failure verifies the unaccompanied-child
+rollback. Structured pain details and atomic analgesic-review alerts are also implemented and
+failure-tested. The remaining N4 criteria are mapped in [N4 scope](docs/N4-SCOPE.md). Hazard controls remain provisional
+until clinical review, even where engineering tests pass.
+
+Already implemented locally, so not scheduled again: Blazor/Keycloak/SignalR and the two
+headline boards; development certificate and observability configuration; migration rollback
+and query-load tests. The [evidence pack](docs/DSPT-EVIDENCE.md#performance-measurements) records
+median 6ms, p95 18ms, p99 45ms for 150 waiting patients and eight concurrent query readers.
+The same document records a 10-second encrypted development restore. Neither proves deployed
+performance or recovery objectives at realistic volume.
+
+The dated check table above is historical; the 2026-09-21 results are the fresh local evidence
+for this tranche. Each implementation PR must record its own remote verification.
 
 ## Next phases
 
 | Phase | Scope | Gate |
 |---|---|---|
-| H | Waiting board and escalation dashboard (MVP-080–095) | None. Stack and transport decided (§Open decisions 5 and 6); read APIs already delivered |
-| F | Paediatric & clinical safety features (MVP-030–045) | **DCB0129 hazard log, kept provisionally by the developer until a clinical safety officer exists** |
+| H | Board verification, episode detail, policy editor, escalation workflow gaps, triage/discharge screens | Browser/manual acceptance; observation UI depends on N1; Welsh and clinical reviewers required for pilot acceptance |
+| F | Complete observation slice, then remaining MVP-030–045 criteria | Synthetic-data development with provisional hazard log; real-patient use requires clinical safety review and safety case |
+| I follow-through | Representative recovery/load, site deployment, paging and security verification | Named site/operator and independent reviewers; local capability is not deployment evidence |
 
 ## Open decisions
 
@@ -237,7 +310,7 @@ The CD pipeline stays written and skipped until there is somewhere to deploy to.
 |---|---|---|
 | 1 | SQL Server vs PostgreSQL | ✅ SQL Server adopted in code; revisit hosting cost before Phase 1 |
 | 2 | Project split | ✅ Host project, `tests/Betsi.Tests`, `tools/Betsi.LicenseTool` |
-| 3 | Clinical safety officer | 🔄 **Unassigned.** No longer blocks Phase F: the hazard log is kept by the developer and every clinical decision in it is marked *provisional — requires sign-off before any real patient data*. That includes the three already made in code: licence gating classification, supervisory role list, role-to-permission matrix. A real deployment replaces the author, not the log |
+| 3 | Clinical safety officer | 🔄 **Unassigned.** No longer blocks Phase F: the hazard log is kept by the developer and every clinical decision in it is marked *provisional — requires sign-off before any real patient data*. That includes the three already made in code: licence gating classification, supervisory role list, role-to-permission matrix. Real-patient use requires the clinical safety officer to review hazards and controls and issue the clinical safety case described in the log |
 | 4 | Identity provider | ✅ **Keycloak** in `docker compose` for development, issuing the tenant and acting-role claims properly. A pilot site substitutes its own provider by configuration — the service was built provider-agnostic in Phase G and this changes no code |
 | 5 | Real-time transport for dashboards | ✅ **SignalR**, from the first screen. The escalation engine notifies subscribed clients when it raises a tier, rather than every board polling. A backplane is needed once there are two instances; single-instance until then, recorded as a known limit |
 | 6 | UI stack | ✅ **Blazor Server.** One language and one build; the circuit is already a websocket, so SignalR is native rather than an addition; authentication reuses the server-side OIDC setup, so no access token is handled in a browser. The cost is a server connection per client and reconnection handling on a ward tablet |

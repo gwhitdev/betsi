@@ -1,6 +1,7 @@
 namespace Betsi.Application.Queries;
 
 using Betsi.Application.Escalations;
+using Betsi.Application.Commands.Handlers;
 using Betsi.Domain.Aggregates;
 using Betsi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,20 @@ public sealed record EpisodeDetail(
     DateTime DateOfBirth,
     int AgeYears,
     string? NhsNumber,
+    bool? CarerPresent,
+    string? CarerName,
+    string? CarerRelationship,
+    DateTime? CarerPresenceRecordedAt,
+    bool SafeguardingConcernRaised,
+    bool DeteriorationFlagged,
+    DateTime? DeteriorationFlaggedAt,
+    bool RequiresPaediatricPathway,
+    Guid? AssignedStaffActorId,
+    string? AssignedStaffName,
+    string? AssignedStaffRole,
+    bool? AssignedStaffPaediatricTrained,
+    DateTime? StaffAssignedAt,
+    bool PaediatricSkillGapAlertOpen,
     string State,
     Guid? LocationId,
     DateTime ArrivedAt,
@@ -68,11 +83,13 @@ public sealed class EpisodeQueries
 {
     private readonly BetsiDbContext _context;
     private readonly TimeProvider _time;
+    private readonly ClinicalOptions _clinical;
 
-    public EpisodeQueries(BetsiDbContext context, TimeProvider time)
+    public EpisodeQueries(BetsiDbContext context, TimeProvider time, ClinicalOptions clinical)
     {
         _context = context;
         _time = time;
+        _clinical = clinical;
     }
 
     public async Task<EpisodeDetail?> GetEpisodeAsync(Guid id, CancellationToken cancellationToken)
@@ -93,7 +110,13 @@ public sealed class EpisodeQueries
 
         return new EpisodeDetail(
             episode.Id, episode.Version, episode.FirstName, episode.LastName, episode.DateOfBirth,
-            AgeOn(episode.DateOfBirth, now), episode.NhsNumber, episode.State.ToString(), episode.LocationId,
+            AgeOn(episode.DateOfBirth, now), episode.NhsNumber,
+            episode.CarerPresent, episode.CarerName, episode.CarerRelationship, episode.CarerPresenceRecordedAt,
+            episode.SafeguardingConcernRaised, episode.DeteriorationFlagged, episode.DeteriorationFlaggedAt,
+            AgeOn(episode.DateOfBirth, now) < _clinical.PaediatricPathwayAgeYears,
+            episode.AssignedStaffActorId, episode.AssignedStaffName, episode.AssignedStaffRole,
+            episode.AssignedStaffPaediatricTrained, episode.StaffAssignedAt, episode.PaediatricSkillGapAlertOpen,
+            episode.State.ToString(), episode.LocationId,
             episode.ArrivedAt, episode.TriageStartedAt, episode.TreatmentStartedAt, episode.EndedAt,
             WaitingTimeMonitor.WaitingStates.Contains(episode.State) ? Minutes(episode.ArrivedAt, now) : null,
             escalations.Select(e => new EpisodeEscalationSummary(
